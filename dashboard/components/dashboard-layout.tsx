@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { Shield, Users, Mail, Settings, LayoutDashboard, Bell, ChevronDown } from "lucide-react"
+import { UserButton, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ const navigation = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { user } = useUser()
 
   return (
     <div className="flex h-screen bg-background">
@@ -111,10 +113,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback>AD</AvatarFallback>
+                    <AvatarImage src={user?.imageUrl ?? "/placeholder.svg"} />
+                    <AvatarFallback>{user?.firstName?.[0] ?? "U"}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">Admin User</span>
+                  <span className="text-sm">{user?.fullName ?? "User"}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -124,7 +126,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem>Profile Settings</DropdownMenuItem>
                 <DropdownMenuItem>Preferences</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log out</DropdownMenuItem>
+                <DropdownMenuItem className="p-0">
+                  <UserButton afterSignOutUrl="/sign-in" />
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -1,0 +1,138 @@
+"use client"
+
+import type React from "react"
+
+import { Shield, Users, Mail, Settings, LayoutDashboard, Bell, ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+
+const navigation = [
+  { name: "Overview", href: "/", icon: LayoutDashboard },
+  { name: "Users", href: "/users", icon: Users },
+  { name: "Emails", href: "/emails", icon: Mail },
+  { name: "Settings", href: "/settings", icon: Settings },
+]
+
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <aside className="w-64 border-r border-border bg-card flex flex-col">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Shield className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">MailShield AI</h1>
+              <p className="text-xs text-muted-foreground">Email Security</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-1">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-xs text-muted-foreground">System Active</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navigation Bar */}
+        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 bg-transparent">
+                  <span>Organization</span>
+                  <Badge variant="secondary" className="text-xs">
+                    Enterprise
+                  </Badge>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Switch Organization</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <div className="flex flex-col">
+                    <span className="font-medium">Acme Corp</span>
+                    <span className="text-xs text-muted-foreground">acme.com</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarFallback>AD</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">Admin User</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Profile Settings</DropdownMenuItem>
+                <DropdownMenuItem>Preferences</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Log out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto p-6">{children}</main>
+      </div>
+    </div>
+  )
+}

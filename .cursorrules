@@ -5,6 +5,7 @@
   - Structure: `<type>(<scope>): <subject>`
   - Format: Follow Conventional Commits.
   - Detail: Include a body explaining "why" the change was made, not just "what".
+  - **Description**: All commits MUST include a detailed description/body paragraph after the subject line.
 - **Pull Requests**: Provide comprehensive PR titles and descriptions.
   - Titles should summarize the main change.
   - Descriptions must include:

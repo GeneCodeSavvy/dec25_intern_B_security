@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,15 +23,21 @@ class FetchEmailsRequest(BaseModel):
 def read_root():
     return {"message": "Hello from dashboard-backend!"}
 
+logger = logging.getLogger(__name__)
+
 @app.post("/api/v1/emails/fetch")
 def fetch_emails(request: FetchEmailsRequest):
     if not request.access_token:
         raise HTTPException(status_code=400, detail="Access token is required")
     
-    gmail = GmailService(request.access_token)
-    emails = gmail.fetch_recent_emails()
-    
-    return {"status": "success", "count": len(emails), "emails": emails}
+    try:
+        gmail = GmailService(request.access_token)
+        emails = gmail.fetch_recent_emails()
+        
+        return {"status": "success", "count": len(emails), "emails": emails}
+    except Exception as e:
+        logger.error(f"Error fetching emails: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail="Failed to fetch emails from Gmail")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -32,7 +32,8 @@ class Organisation(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     name: str
     domain: str
-    api_key: str = Field(index=True, unique=True)
+    api_key_hash: str = Field(index=True, unique=True)  # Store hashed value only
+    api_key_prefix: str = Field(max_length=8)  # For identification in UI (e.g., "pg_abc123")
 
     users: list["User"] = Relationship(back_populates="organisation")
     email_events: list["EmailEvent"] = Relationship(back_populates="organisation")

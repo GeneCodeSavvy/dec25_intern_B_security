@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import os
+import secrets
 from dataclasses import dataclass
 from typing import Optional
 import uuid
@@ -15,6 +17,27 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .database import get_session, init_db
 from .models import EmailEvent, EmailStatus, Organisation, RiskTier, User
 from .models import UserRole  # noqa: F401 (used in Enum creation)
+
+
+def _hash_api_key(api_key: str) -> str:
+    """Hash an API key using SHA-256 for secure storage."""
+    return hashlib.sha256(api_key.encode()).hexdigest()
+
+
+def _generate_api_key() -> tuple[str, str, str]:
+    """Generate an API key and return (plaintext_key, hashed_key, prefix).
+    
+    The plaintext key is shown to the user once. Only the hash is stored.
+    """
+    plaintext_key = f"pg_{secrets.token_urlsafe(32)}"
+    prefix = plaintext_key[:8]  # "pg_" + first 5 chars of token
+    hashed_key = _hash_api_key(plaintext_key)
+    return plaintext_key, hashed_key, prefix
+
+
+def _verify_api_key_hash(plaintext_key: str, stored_hash: str) -> bool:
+    """Verify an API key against its stored hash."""
+    return secrets.compare_digest(_hash_api_key(plaintext_key), stored_hash)
 
 app = FastAPI(title="PhishGuard Dashboard API", version="0.1.0")
 
@@ -103,13 +126,16 @@ async def require_admin(ctx: AuthUserContext = Depends(get_current_user)) -> Aut
 
 
 async def verify_api_key(
-    x_api_key: str | None = Header(default=None, convert_underscores=False),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
     session: AsyncSession = Depends(get_session),
 ) -> Organisation:
+    """Verify API key by hashing and comparing against stored hash."""
     if not x_api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing X-API-Key")
 
-    result = await session.exec(select(Organisation).where(Organisation.api_key == x_api_key))
+    # Hash the provided key and look up by hash
+    key_hash = _hash_api_key(x_api_key)
+    result = await session.exec(select(Organisation).where(Organisation.api_key_hash == key_hash))
     org = result.first()
     if not org:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
@@ -125,7 +151,9 @@ async def resolve_ingest_context(
     authorization = request.headers.get("authorization")
 
     if api_key:
-        result = await session.exec(select(Organisation).where(Organisation.api_key == api_key))
+        # Hash the provided key and look up by hash
+        key_hash = _hash_api_key(api_key)
+        result = await session.exec(select(Organisation).where(Organisation.api_key_hash == key_hash))
         org = result.first()
         if not org:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
@@ -163,10 +191,20 @@ class OrganisationCreate(SQLModel):
 
 
 class OrganisationRead(SQLModel):
+    """Organisation data for listing (api_key is never exposed after creation)."""
     id: uuid.UUID
     name: str
     domain: str
-    api_key: str
+    api_key_prefix: str  # Only show prefix for identification
+
+
+class OrganisationCreateResponse(SQLModel):
+    """Response when creating an organisation. Contains the plaintext API key (shown once only)."""
+    id: uuid.UUID
+    name: str
+    domain: str
+    api_key: str  # Plaintext key - only shown once at creation time
+    api_key_prefix: str
 
 
 class UserCreate(SQLModel):
@@ -230,22 +268,33 @@ async def list_emails(
     return result.all()
 
 
-def _generate_api_key() -> str:
-    import secrets
-    return secrets.token_urlsafe(32)
-
-
-@app.post("/api/organizations", response_model=OrganisationRead, status_code=status.HTTP_201_CREATED)
+@app.post("/api/organizations", response_model=OrganisationCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     payload: OrganisationCreate,
     ctx: AuthUserContext = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
-) -> Organisation:
-    org = Organisation(name=payload.name, domain=payload.domain, api_key=_generate_api_key())
+) -> OrganisationCreateResponse:
+    # Generate API key - plaintext shown once, only hash stored
+    plaintext_key, hashed_key, prefix = _generate_api_key()
+    
+    org = Organisation(
+        name=payload.name,
+        domain=payload.domain,
+        api_key_hash=hashed_key,
+        api_key_prefix=prefix,
+    )
     session.add(org)
     await session.commit()
     await session.refresh(org)
-    return org
+    
+    # Return response with plaintext key (only time it's visible)
+    return OrganisationCreateResponse(
+        id=org.id,
+        name=org.name,
+        domain=org.domain,
+        api_key=plaintext_key,
+        api_key_prefix=prefix,
+    )
 
 
 @app.get("/api/organizations", response_model=list[OrganisationRead])

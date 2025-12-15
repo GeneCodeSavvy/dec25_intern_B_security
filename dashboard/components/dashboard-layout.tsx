@@ -129,7 +129,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem>Profile Settings</DropdownMenuItem>
                 <DropdownMenuItem>Preferences</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut({ redirectUrl: "/sign-in" })}>Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => { await signOut({ redirectUrl: "/sign-in" }) }}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

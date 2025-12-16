@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import enum
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
 
@@ -27,17 +25,20 @@ class RiskTier(str, enum.Enum):
     threat = "THREAT"
 
 
+# Define Organisation FIRST (parent), then User and EmailEvent (children)
+# Use List["ClassName"] for forward references to classes not yet defined
 class Organisation(SQLModel, table=True):
     __tablename__ = "organisations"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     name: str
     domain: str
-    api_key_hash: str = Field(index=True, unique=True)  # Store hashed value only
-    api_key_prefix: str = Field(max_length=8)  # For identification in UI (e.g., "pg_abc123")
+    api_key_hash: str = Field(index=True, unique=True)
+    api_key_prefix: str = Field(max_length=8)
 
-    users: list["User"] = Relationship(back_populates="organisation")
-    email_events: list["EmailEvent"] = Relationship(back_populates="organisation")
+    # Forward references to classes defined later - use string class name only
+    users: List["User"] = Relationship(back_populates="organisation")
+    email_events: List["EmailEvent"] = Relationship(back_populates="organisation")
 
 
 class User(SQLModel, table=True):
@@ -49,6 +50,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True)
     role: UserRole = Field(sa_column=Column(Enum(UserRole, name="user_role_enum")))
 
+    # Organisation is already defined above, so use concrete type
     organisation: Organisation = Relationship(back_populates="users")
 
 
@@ -66,7 +68,7 @@ class EmailEvent(SQLModel, table=True):
         default=EmailStatus.pending,
         sa_column=Column(
             Enum(EmailStatus, name="email_status_enum"),
-            server_default="PENDING",  # DB-side default for inserts bypassing ORM
+            server_default="PENDING",
         ),
     )
     risk_score: Optional[int] = Field(default=None)
@@ -84,4 +86,5 @@ class EmailEvent(SQLModel, table=True):
         sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
 
+    # Organisation is already defined above, so use concrete type
     organisation: Organisation = Relationship(back_populates="email_events")

@@ -1,6 +1,5 @@
 """Tests for worker functions."""
 import uuid
-from unittest.mock import patch
 
 import pytest
 from sqlmodel import select

@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any
 
 import jwt
 import pytest
@@ -23,7 +22,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import os
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
-from models import EmailStatus, Organisation, User, UserRole
+from models import Organisation, User, UserRole
 
 
 # Use SQLite in-memory for tests

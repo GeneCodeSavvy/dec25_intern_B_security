@@ -14,12 +14,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 try:
     from .database import get_session, init_db
-    from .models import EmailEvent, EmailStatus, Organisation, RiskTier, User
-    from .models import UserRole  # noqa: F401 (used in Enum creation)
+    from .models import EmailEvent, EmailStatus, Organisation, RiskTier, User, UserRole
 except ImportError:
     from database import get_session, init_db
-    from models import EmailEvent, EmailStatus, Organisation, RiskTier, User
-    from models import UserRole  # noqa: F401 (used in Enum creation)
+    from models import EmailEvent, EmailStatus, Organisation, RiskTier, User, UserRole
 
 app = FastAPI(title="PhishGuard Dashboard API", version="0.1.0")
 

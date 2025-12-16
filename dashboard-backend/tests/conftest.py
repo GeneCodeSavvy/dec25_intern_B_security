@@ -97,7 +97,7 @@ async def test_admin_user(test_session: AsyncSession, test_org: dict) -> dict:
         org_id=test_org["id"],
         google_id="google_admin_123",
         email="admin@test.com",
-        role=UserRole.platform_admin,  # Use platform_admin for full access in tests
+        role=UserRole.platform_admin,  # Use platform_admin (highest privilege) for full access in tests
     )
     test_session.add(user)
     await test_session.commit()

@@ -6,10 +6,12 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+# Import models to ensure SQLModel metadata is populated.
+# Try relative import first (when used as package), fall back to absolute import (when run directly).
 try:
-    from .models import EmailEvent, Organisation, User  # noqa: F401 - ensure metadata import
+    from .models import EmailEvent, Organisation, User  # noqa: F401
 except ImportError:
-    from models import EmailEvent, Organisation, User  # noqa: F401 - ensure metadata import
+    from models import EmailEvent, Organisation, User  # noqa: F401
 
 load_dotenv()
 

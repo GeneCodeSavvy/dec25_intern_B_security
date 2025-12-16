@@ -77,7 +77,7 @@ async def test_update_user_role(test_client: AsyncClient, test_admin_user: dict,
     """PATCH /api/users/{id}/role updates user role."""
     token = create_mock_jwt(test_admin_user["clerk_id"])
     user_id = str(test_member_user["id"])
-    
+
     response = await test_client.patch(
         f"/api/users/{user_id}/role",
         json={"role": "admin"},
@@ -93,7 +93,7 @@ async def test_update_user_role_not_found(test_client: AsyncClient, test_admin_u
     """PATCH /api/users/{id}/role returns 404 for non-existent user."""
     token = create_mock_jwt(test_admin_user["clerk_id"])
     fake_id = str(uuid.uuid4())
-    
+
     response = await test_client.patch(
         f"/api/users/{fake_id}/role",
         json={"role": "admin"},

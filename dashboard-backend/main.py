@@ -172,6 +172,7 @@ def fetch_gmail_messages(access_token: str, limit: int = 10) -> list[dict]:
                 "recipient": recipient,
                 "subject": subject,
                 "body_preview": snippet,
+                "message_id": msg["id"],
                 "status": EmailStatus.pending
             })
             
@@ -357,30 +358,6 @@ async def list_emails(
     ctx: AuthUserContext = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[EmailEvent]:
-    # Sync from Gmail if token is provided
-    if x_google_token:
-        try:
-            gmail_emails = fetch_gmail_messages(x_google_token, limit=10) # Limit sync to 10 for perf
-            for g_email in gmail_emails:
-                # Check if email already exists (deduplication based on sender+subject+time approx or just append)
-                # For now, simplistic ingestion: just add them if not exact duplicate content? 
-                # Better: In a real app we'd use Message-ID. Here we'll just ingest blindly for the demo 
-                # or check if we recently added it.
-                # Let's just ingest them.
-                email = EmailEvent(
-                    org_id=ctx.organisation.id,
-                    sender=g_email["sender"],
-                    recipient=g_email["recipient"],
-                    subject=g_email["subject"],
-                    body_preview=g_email["body_preview"],
-                    status=EmailStatus.pending,
-                )
-                session.add(email)
-            if gmail_emails:
-                await session.commit()
-        except Exception as e:
-            logger.error(f"Error syncing Gmail: {e}")
-
     query = select(EmailEvent).where(EmailEvent.org_id == ctx.organisation.id).order_by(EmailEvent.created_at.desc())
     if status_filter:
         query = query.where(EmailEvent.status == status_filter)
@@ -388,6 +365,55 @@ async def list_emails(
 
     result = await session.exec(query)
     return result.all()
+
+
+@app.post("/api/emails/sync", status_code=status.HTTP_202_ACCEPTED)
+async def sync_emails(
+    x_google_token: str = Header(..., alias="X-Google-Token"),
+    ctx: AuthUserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Trigger background sync of emails from Gmail."""
+    try:
+        # Fetch recent messages
+        gmail_emails = fetch_gmail_messages(x_google_token, limit=20)
+        
+        count = 0
+        for g_email in gmail_emails:
+            # Deduplicate by message_id if available, or fall back to simplistic check
+            # Real Gmail API returns an 'id' which is persistent.
+            # fetch_gmail_messages currently returns a dict constructed manually.
+            # We should update fetch_gmail_messages to include 'id' -> 'message_id'
+            
+            # Assuming fetch_gmail_messages returns 'message_id' (we need to update it too)
+            # For now, let's assume one was added or we use a heuristic
+            msg_id = g_email.get("message_id")
+            
+            if msg_id:
+                existing = await session.exec(select(EmailEvent).where(EmailEvent.message_id == msg_id))
+                if existing.first():
+                    continue
+
+            email = EmailEvent(
+                org_id=ctx.organisation.id,
+                sender=g_email["sender"],
+                recipient=g_email["recipient"],
+                subject=g_email["subject"],
+                body_preview=g_email["body_preview"],
+                message_id=msg_id,
+                status=EmailStatus.pending,
+            )
+            session.add(email)
+            count += 1
+            
+        if count > 0:
+            await session.commit()
+            
+        return {"status": "synced", "new_messages": count}
+
+    except Exception as e:
+        logger.error(f"Error syncing Gmail: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Sync failed")
 
 
 @app.post("/api/organizations", response_model=OrganisationCreateResponse, status_code=status.HTTP_201_CREATED)

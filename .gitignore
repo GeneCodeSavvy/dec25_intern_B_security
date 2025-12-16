@@ -14,6 +14,7 @@ env/
 .env
 .env.local
 .python-version
+*.db
 
 # Node.js / Next.js
 node_modules/

@@ -2,13 +2,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
 type FetchOptions = {
   token?: string
+  headers?: Record<string, string>
 }
 
-async function request<T>(path: string, { token }: FetchOptions = {}): Promise<T> {
+async function request<T>(path: string, { token, headers }: FetchOptions = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
     },
     cache: "no-store",
   })
@@ -41,6 +43,9 @@ export type Email = {
   analysis_result?: Record<string, unknown>
 }
 
-export async function fetchEmails(token: string): Promise<Email[]> {
-  return request<Email[]>("/api/emails", { token })
+export async function fetchEmails(token: string, googleToken?: string): Promise<Email[]> {
+  return request<Email[]>("/api/emails", {
+    token,
+    headers: googleToken ? { "X-Google-Token": googleToken } : undefined
+  })
 }

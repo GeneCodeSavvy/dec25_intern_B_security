@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 
-import { useAuth } from "@clerk/nextjs"
+import { useSession } from "next-auth/react"
 import { Filter, Mail, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ const tierColor: Record<string, string> = {
 }
 
 export function EmailsPage() {
-  const { getToken } = useAuth()
+  const { data: session } = useSession()
   const [emails, setEmails] = useState<Email[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,11 +31,13 @@ export function EmailsPage() {
       setLoading(true)
       setError(null)
       try {
-        const token = await getToken()
-        if (!token) {
-          throw new Error("Not authenticated")
+        if (!session?.idToken) {
+          // Wait for session to load or redirect handled by middleware
+          if (session === null) throw new Error("Not authenticated")
+          return
         }
-        const data = await fetchEmails(token)
+        // Pass both ID token (for auth) and Access Token (for Gmail API)
+        const data = await fetchEmails(session.idToken, session.accessToken)
         if (active) {
           setEmails(data)
         }
@@ -54,7 +56,7 @@ export function EmailsPage() {
     return () => {
       active = false
     }
-  }, [getToken])
+  }, [session])
 
   const filteredEmails = useMemo(() => {
     if (statusFilter === "all") return emails

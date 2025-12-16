@@ -7,7 +7,7 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from .models import EmailEvent, Organisation, User  # noqa: F401 - ensure metadata import
+from models import EmailEvent, Organisation, User  # noqa: F401 - ensure metadata import
 
 load_dotenv()
 
@@ -16,20 +16,27 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set")
 
 # Convert postgresql:// to postgresql+asyncpg:// for async driver
-if DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+# Determine pool settings based on database type
+connect_args = {}
+pool_args = {}
 
-# GCP Cloud SQL PostgreSQL configuration
-# Using QueuePool for connection pooling (suitable for long-running services)
-# For Cloud SQL, ensure DATABASE_URL includes ?sslmode=require or appropriate SSL params
+if "postgresql" in DATABASE_URL:
+    pool_args = {
+        "poolclass": QueuePool,
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_pre_ping": True,
+    }
+else:
+    # SQLite / other (aiosqlite usually prefers NullPool or implicit default)
+    # Using default pool for SQLite (often NullPool or SingletonThreadPool depending on context)
+    pass
+
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     future=True,
-    poolclass=QueuePool,
-    pool_size=5,  # Number of connections to keep open
-    max_overflow=10,  # Additional connections allowed beyond pool_size
-    pool_pre_ping=True,  # Verify connections before using (handles dropped connections)
+    **pool_args,
 )
 
 

@@ -100,6 +100,8 @@ if DEV_MODE:
         "DEV_MODE is enabled. Auth verification may be skipped. "
         "DO NOT use this setting in production!"
     )
+elif not GOOGLE_CLIENT_ID:
+    raise RuntimeError("AUTH_GOOGLE_ID environment variable is not set. Service cannot start in production mode.")
 
 
 @app.on_event("startup")

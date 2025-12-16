@@ -28,15 +28,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
+        token.idToken = account.id_token
         token.expiresAt = account.expires_at
       }
       return token
     },
     async session({ session, token }) {
       // Send properties to the client, like an access_token and user id from a provider.
-      session.accessToken = token.accessToken as string
-      session.refreshToken = token.refreshToken as string
-      session.expiresAt = token.expiresAt as number
+      session.accessToken = token.accessToken as string | undefined
+      session.refreshToken = token.refreshToken as string | undefined
+      session.idToken = token.idToken as string | undefined
+      session.expiresAt = typeof token.expiresAt === 'number' ? token.expiresAt : undefined
       return session
     },
   },

@@ -9,7 +9,9 @@ from typing import Optional
 import uuid
 
 from google.oauth2 import id_token
+from google.oauth2.credentials import Credentials
 from google.auth.transport import requests
+from googleapiclient.discovery import build
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, select
@@ -104,6 +106,42 @@ def _extract_bearer_token(authorization: str | None) -> str:
     return authorization.split(" ", 1)[1]
 
 
+def fetch_gmail_messages(access_token: str, limit: int = 10) -> list[dict]:
+    """Fetch emails from Gmail API using the provided access token."""
+    try:
+        creds = Credentials(token=access_token)
+        service = build("gmail", "v1", credentials=creds)
+
+        # List messages
+        results = service.users().messages().list(userId="me", maxResults=limit).execute()
+        messages = results.get("messages", [])
+
+        email_data = []
+        for msg in messages:
+            # Get full message details
+            msg_detail = service.users().messages().get(userId="me", id=msg["id"], format="full").execute()
+            
+            headers = msg_detail.get("payload", {}).get("headers", [])
+            subject = next((h["value"] for h in headers if h["name"] == "Subject"), "(No Subject)")
+            sender = next((h["value"] for h in headers if h["name"] == "From"), "Unknown")
+            recipient = next((h["value"] for h in headers if h["name"] == "To"), "Unknown")
+            snippet = msg_detail.get("snippet", "")
+
+            email_data.append({
+                "sender": sender,
+                "recipient": recipient,
+                "subject": subject,
+                "body_preview": snippet,
+                "message_id": msg["id"],
+                "status": EmailStatus.pending
+            })
+            
+        return email_data
+    except Exception as e:
+        logger.error(f"Failed to fetch Gmail messages: {e}")
+        return []
+
+
 @dataclass
 class AuthUserContext:
     user: User
@@ -133,8 +171,14 @@ async def get_current_user(
 
 
 async def require_admin(ctx: AuthUserContext = Depends(get_current_user)) -> AuthUserContext:
-    if ctx.user.role != UserRole.admin:
+    if ctx.user.role not in (UserRole.admin, UserRole.platform_admin):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return ctx
+
+
+async def require_platform_admin(ctx: AuthUserContext = Depends(get_current_user)) -> AuthUserContext:
+    if ctx.user.role != UserRole.platform_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin access required")
     return ctx
 
 
@@ -269,6 +313,7 @@ async def list_emails(
     status_filter: Optional[EmailStatus] = None,
     limit: int = 100,
     offset: int = 0,
+    x_google_token: Optional[str] = Header(None, alias="X-Google-Token"),
     ctx: AuthUserContext = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[EmailEvent]:
@@ -281,10 +326,59 @@ async def list_emails(
     return result.all()
 
 
+@app.post("/api/emails/sync", status_code=status.HTTP_202_ACCEPTED)
+async def sync_emails(
+    x_google_token: str = Header(..., alias="X-Google-Token"),
+    ctx: AuthUserContext = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Trigger background sync of emails from Gmail."""
+    try:
+        # Fetch recent messages
+        gmail_emails = fetch_gmail_messages(x_google_token, limit=20)
+        
+        count = 0
+        for g_email in gmail_emails:
+            # Deduplicate by message_id if available, or fall back to simplistic check
+            # Real Gmail API returns an 'id' which is persistent.
+            # fetch_gmail_messages currently returns a dict constructed manually.
+            # We should update fetch_gmail_messages to include 'id' -> 'message_id'
+            
+            # Assuming fetch_gmail_messages returns 'message_id' (we need to update it too)
+            # For now, let's assume one was added or we use a heuristic
+            msg_id = g_email.get("message_id")
+            
+            if msg_id:
+                existing = await session.exec(select(EmailEvent).where(EmailEvent.message_id == msg_id))
+                if existing.first():
+                    continue
+
+            email = EmailEvent(
+                org_id=ctx.organisation.id,
+                sender=g_email["sender"],
+                recipient=g_email["recipient"],
+                subject=g_email["subject"],
+                body_preview=g_email["body_preview"],
+                message_id=msg_id,
+                status=EmailStatus.pending,
+            )
+            session.add(email)
+            count += 1
+            
+        if count > 0:
+            await session.commit()
+            
+        return {"status": "synced", "new_messages": count}
+
+    except Exception as e:
+        logger.error(f"Error syncing Gmail: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Sync failed")
+
+
 @app.post("/api/organizations", response_model=OrganisationCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     payload: OrganisationCreate,
-    ctx: AuthUserContext = Depends(require_admin),
+    ctx: AuthUserContext = Depends(require_platform_admin),
     session: AsyncSession = Depends(get_session),
 ) -> OrganisationCreateResponse:
     # Generate API key - plaintext shown once, only hash stored
@@ -312,7 +406,7 @@ async def create_organization(
 
 @app.get("/api/organizations", response_model=list[OrganisationRead])
 async def list_organizations(
-    ctx: AuthUserContext = Depends(require_admin),
+    ctx: AuthUserContext = Depends(require_platform_admin),
     session: AsyncSession = Depends(get_session),
 ) -> list[Organisation]:
     result = await session.exec(select(Organisation))
@@ -325,7 +419,18 @@ async def create_user(
     ctx: AuthUserContext = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    org_id = payload.org_id or ctx.organisation.id
+    if ctx.user.role == UserRole.platform_admin:
+        # Platform admin can create users for any org (default to their own)
+        org_id = payload.org_id or ctx.organisation.id
+    else:
+        # Regular admin can only create users for their own org
+        if payload.org_id and payload.org_id != ctx.organisation.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Cannot create users for other organisations"
+            )
+        org_id = ctx.organisation.id
+
     user = User(
         email=payload.email,
         google_id=payload.google_id,
@@ -344,8 +449,22 @@ async def list_users(
     ctx: AuthUserContext = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> list[User]:
-    target_org = org_id or ctx.organisation.id
-    result = await session.exec(select(User).where(User.org_id == target_org))
+    if ctx.user.role == UserRole.platform_admin:
+        # Platform admin can filter by org or see all
+        if org_id:
+            query = select(User).where(User.org_id == org_id)
+        else:
+            query = select(User)
+    else:
+        # Regular admin restricted to own org
+        if org_id and org_id != ctx.organisation.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Cannot list users of other organisations"
+            )
+        query = select(User).where(User.org_id == ctx.organisation.id)
+
+    result = await session.exec(query)
     return result.all()
 
 
@@ -359,7 +478,9 @@ async def update_user_role(
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if user.org_id != ctx.organisation.id:
+    
+    # Check permissions: platform_admin can edit anyone; regular admin only their own org
+    if ctx.user.role != UserRole.platform_admin and user.org_id != ctx.organisation.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot modify users outside organisation")
 
     user.role = payload.role

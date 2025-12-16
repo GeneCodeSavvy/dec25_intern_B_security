@@ -7,6 +7,7 @@ from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
 
 
 class UserRole(str, enum.Enum):
+    platform_admin = "platform_admin"
     admin = "admin"
     member = "member"
 
@@ -57,6 +58,7 @@ class EmailEvent(SQLModel, table=True):
     sender: str
     recipient: str
     subject: str
+    message_id: Optional[str] = Field(default=None, index=True)
     body_preview: Optional[str] = None
     status: EmailStatus = Field(
         default=EmailStatus.pending,

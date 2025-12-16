@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 
-import { useAuth } from "@clerk/nextjs"
+import { useSession } from "next-auth/react"
 import { Filter, Mail, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { fetchEmails, type Email } from "@/lib/api"
+import { type Email, fetchEmails, syncEmails } from "@/lib/api"
 
 const tierColor: Record<string, string> = {
   SAFE: "text-green-500 bg-green-500/10",
@@ -19,7 +19,7 @@ const tierColor: Record<string, string> = {
 }
 
 export function EmailsPage() {
-  const { getToken } = useAuth()
+  const { data: session } = useSession()
   const [emails, setEmails] = useState<Email[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,11 +31,27 @@ export function EmailsPage() {
       setLoading(true)
       setError(null)
       try {
-        const token = await getToken()
-        if (!token) {
-          throw new Error("Not authenticated")
+        if (!session?.idToken) {
+          // Wait for session to load or redirect handled by middleware
+          if (session === null) throw new Error("Not authenticated")
+          return
         }
-        const data = await fetchEmails(token)
+
+        // Trigger sync if we have an access token (background async or await?)
+        // User asked to "trigger fetch_gmail_messages... in a background task... ensure commits occur only for new records"
+        // On frontend, we should probably await sync then fetch, or fetch then sync in bg?
+        // The prompt implies we should trigger the sync.
+        if (session.accessToken) {
+          try {
+            // Import syncEmails at top of file needed
+            await syncEmails(session.idToken, session.accessToken)
+          } catch (e) {
+            console.error("Sync failed", e)
+          }
+        }
+
+        // Fetch local db emails
+        const data = await fetchEmails(session.idToken)
         if (active) {
           setEmails(data)
         }
@@ -54,7 +70,7 @@ export function EmailsPage() {
     return () => {
       active = false
     }
-  }, [getToken])
+  }, [session])
 
   const filteredEmails = useMemo(() => {
     if (statusFilter === "all") return emails

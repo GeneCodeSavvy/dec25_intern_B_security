@@ -91,13 +91,13 @@ async def test_org(test_session: AsyncSession) -> dict:
 
 @pytest_asyncio.fixture
 async def test_admin_user(test_session: AsyncSession, test_org: dict) -> dict:
-    """Create a test admin user and return its data as a dict."""
+    """Create a test platform_admin user and return its data as a dict."""
     user = User(
         id=uuid.uuid4(),
         org_id=test_org["id"],
         google_id="google_admin_123",
         email="admin@test.com",
-        role=UserRole.admin,
+        role=UserRole.platform_admin,  # Use platform_admin for full access in tests
     )
     test_session.add(user)
     await test_session.commit()

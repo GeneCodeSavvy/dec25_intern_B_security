@@ -42,23 +42,30 @@ async def test_init_db_creates_tables():
 @pytest.mark.asyncio
 async def test_organisation_crud(test_session: AsyncSession):
     """Create and read Organisation."""
+    import hashlib
+    test_api_key = "sk_crud-api-key-123"
+    test_api_key_hash = hashlib.sha256(test_api_key.encode()).hexdigest()
+    test_api_key_prefix = test_api_key[:8]
+    
     org = Organisation(
         id=uuid.uuid4(),
         name="CRUD Test Org",
         domain="crudtest.com",
-        api_key="crud-api-key-123",
+        api_key_hash=test_api_key_hash,
+        api_key_prefix=test_api_key_prefix,
     )
     test_session.add(org)
     await test_session.commit()
 
     # Read back
     result = await test_session.exec(
-        select(Organisation).where(Organisation.api_key == "crud-api-key-123")
+        select(Organisation).where(Organisation.api_key_hash == test_api_key_hash)
     )
     fetched = result.first()
     assert fetched is not None
     assert fetched.name == "CRUD Test Org"
     assert fetched.domain == "crudtest.com"
+    assert fetched.api_key_prefix == test_api_key_prefix
 
 
 @pytest.mark.asyncio

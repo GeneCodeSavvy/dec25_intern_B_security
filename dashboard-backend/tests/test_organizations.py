@@ -23,7 +23,9 @@ async def test_create_organization_as_admin(test_client: AsyncClient, test_admin
     assert data["name"] == payload["name"]
     assert data["domain"] == payload["domain"]
     assert "api_key" in data
-    assert len(data["api_key"]) == 32  # UUID hex is 32 chars
+    assert data["api_key"].startswith("sk_")  # Secure API key with prefix
+    assert "api_key_prefix" in data
+    assert data["api_key_prefix"] == data["api_key"][:8]  # Prefix matches first 8 chars
 
 
 @pytest.mark.asyncio

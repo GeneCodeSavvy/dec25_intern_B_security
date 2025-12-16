@@ -16,6 +16,9 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set")
 
 # Convert postgresql:// to postgresql+asyncpg:// for async driver
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Determine pool settings based on database type
 connect_args = {}
 pool_args = {}

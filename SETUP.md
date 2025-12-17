@@ -12,19 +12,7 @@ This guide will help you run the PhishGuard project locally. The project consist
 
 ---
 
-## 1. Database Setup
-
-Ensure you have a PostgreSQL database running locally.
-
-1.  **Create a database named `phishguard`**:
-    ```bash
-    createdb phishguard
-    ```
-    *(Or use your preferred database tool like pgAdmin/TablePlus)*
-
----
-
-## 2. Backend Setup (`dashboard-backend/`)
+## 1. Backend Setup (`dashboard-backend/`)
 
 1.  **Navigate to the backend directory:**
     ```bash
@@ -32,35 +20,56 @@ Ensure you have a PostgreSQL database running locally.
     ```
 
 2.  **Configure Environment Variables:**
-    Copy the example environment file from the root:
+    Copy the example environment file from the root or create a new one:
     ```bash
     cp ../example.env .env
     ```
 
 3.  **Update `.env`**:
-    Open `.env` and adjust the configuration:
-    - **DATABASE_URL**: Update with your local credentials.
-      ```properties
-      # Example for local usage
-      DATABASE_URL=postgresql://your_user:your_password@localhost:5432/phishguard
-      ```
-    - **DEV_MODE**: Set to `true` to bypass Google Auth requirements for local testing.
-      ```properties
-      DEV_MODE=true
-      ```
-    - **AUTH_GOOGLE_ID**: Can be left blank if `DEV_MODE=true`.
+    Open `.env` and ensure the configuration matches local needs (defaults to SQLite):
+    ```properties
+    # Default SQLite configuration
+    DATABASE_URL=sqlite+aiosqlite:///./app.db
+    
+    # Dev mode to bypass strict Google Auth checks (optional)
+    DEV_MODE=false
+    
+    # Google Auth Credentials (Required for Login)
+    AUTH_GOOGLE_ID=your-google-client-id
+    ```
 
 4.  **Install Dependencies:**
     ```bash
+    # Using uv (recommended)
     uv sync
+    # OR using pip directly
+    pip install -r requirements.txt
     ```
 
-5.  **Run the Backend Server:**
+5.  **Initialize the Database:**
+    Run the seeding script to create the database file and default organisation:
     ```bash
+    # Using uv
+    uv run python seed_db.py
+    # OR using venv python
+    ./.venv/bin/python seed_db.py
+    ```
+
+6.  **Run the Backend Server:**
+    ```bash
+    # Using uv
     uv run fastapi dev main.py
+    # OR using venv python
+    ./.venv/bin/python -m fastapi dev main.py
     ```
     - The server will start at `http://127.0.0.1:8000`.
-    - It will automatically create necessary database tables on first run.
+
+7.  **Add Users:**
+    Since Google Auth is used, you must explicitly add valid Google accounts to the database:
+    ```bash
+    # Get your Google ID from backend logs after a failed login attempt
+    ./.venv/bin/python add_user.py "YOUR_GOOGLE_ID" "your.email@gmail.com" --admin
+    ```
 
 ---
 
@@ -96,8 +105,8 @@ Ensure you have a PostgreSQL database running locally.
 
 ## Troubleshooting
 
-- **Database Connection Failed**: Double-check your `DATABASE_URL` in `dashboard-backend/.env`. Ensure the Postgres service is running.
-- **Authentication Errors**: If you see auth errors, ensure `DEV_MODE=true` is set in the backend `.env` and restart the backend server.
+- **Database Connection Failed**: Double-check your `DATABASE_URL` in `dashboard-backend/.env`. ensure the directory is writable for the SQLite file.
+- **Authentication Errors**: If you see auth errors, ensure you have added your Google ID via `add_user.py`.
 - **Port Conflicts**: Ensure ports 8000 (backend) and 3000 (frontend) are free.
 
 ---

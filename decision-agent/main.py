@@ -1,8 +1,6 @@
 import os
 import logging
 import asyncio
-import json
-import requests
 import httpx
 from typing import List, Optional, Dict, Any, Literal, Set
 from fastapi import FastAPI, BackgroundTasks, status
@@ -11,16 +9,19 @@ from pythonjsonlogger import jsonlogger
 import google.auth
 from googleapiclient.discovery import build
 import base64
-import time
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# --- Concurrency Control ---
+# Limit concurrent interactions with Hybrid Analysis to avoid 429s
+HA_SEMAPHORE = asyncio.Semaphore(2)
 
 # --- Configuration ---
 FINAL_AGENT_URL = os.getenv("FINAL_AGENT_URL", "http://localhost:9001")
 HA_API_KEY = os.getenv("HYBRID_ANALYSIS_API_KEY") # Required for Phase 2B
 USE_REAL_SANDBOX = os.getenv("USE_REAL_SANDBOX", "true").lower() == "true"
-HA_API_URL = "https://www.hybrid-analysis.com/api/v2"
+HA_API_URL = "https://hybrid-analysis.com/api/v2"
 PORT = int(os.getenv("PORT", "8080"))
 
 # --- Logging ---
@@ -327,10 +328,12 @@ async def process_analysis(payload: StructuredEmailPayload):
     if should_sandbox:
         try:
             if HA_API_KEY and USE_REAL_SANDBOX:
-                provider = "hybrid-analysis"
-                sandbox_res = await hybrid_analysis_scan(payload)
-                if sandbox_res.verdict == "unknown" and sandbox_res.family == "Timeout/Error":
-                     timed_out = True
+                async with HA_SEMAPHORE:
+                    logger.info(f"Acquired semaphore for {payload.message_id}. Active count: {2 - HA_SEMAPHORE._value}")
+                    provider = "hybrid-analysis"
+                    sandbox_res = await hybrid_analysis_scan(payload)
+                    if sandbox_res.verdict == "unknown" and sandbox_res.family == "Timeout/Error":
+                         timed_out = True
             else:
                 provider = "mock-hybrid-analysis"
                 sandbox_res = await simulate_sandbox_scan(payload)

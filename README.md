@@ -55,10 +55,11 @@ An AI-powered email security platform that detects and analyzes phishing threats
 - **uv** (Python): `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - **pnpm** (Node): `npm install -g pnpm`
 
-### 1. Clone & Configure
+### 1. Configure
+
+From the root of the cloned repository, run:
 
 ```bash
-git clone <repository-url>
 cd dec25_intern_B_security
 cp example.env dashboard-backend/.env
 ```

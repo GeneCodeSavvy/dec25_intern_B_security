@@ -3,10 +3,14 @@ import base64
 import json
 import logging
 import requests
+import re
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel
 from pythonjsonlogger import jsonlogger
+import google.auth
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 # --- Configuration ---
 # In production, these would be loaded from Secret Manager or Env Vars
@@ -59,47 +63,155 @@ def decode_pubsub_data(data_base64: str) -> Dict[str, Any]:
         return json.loads(decoded_str)
     except Exception as e:
         logger.error(f"Failed to decode Pub/Sub data: {e}", extra={"error": str(e)})
-        # We raise here because if we can't read the message, we can't process it.
-        # However, for Pub/Sub, we might still want to ACK to prevent infinite retries of bad data.
-        # But for now, we'll let the handler catch it.
         raise ValueError(f"Invalid Pub/Sub data: {e}")
 
-def mock_gmail_processing(email_address: str, history_id: int) -> StructuredEmailPayload:
+def get_gmail_service():
+    """Builds and returns the Gmail API service using ADC."""
+    creds, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/gmail.readonly'])
+    return build('gmail', 'v1', credentials=creds)
+
+def extract_message_content(message_detail: Dict[str, Any]) -> StructuredEmailPayload:
     """
-    Phase 1A Mock: Simulate Gmail API fetching and extraction.
-    In Phase 1B, this will be replaced with real Gmail API calls.
+    Pure logic function to extract data from Gmail message JSON.
+    Parses MIME structure (nested parts) to find URLs and attachments.
     """
-    logger.info(f"Mock processing for {email_address} with historyId {history_id}")
+    msg_id = message_detail.get('id', 'unknown')
+    payload = message_detail.get('payload', {})
+    headers = payload.get('headers', [])
     
+    # Extract Headers
+    sender = next((h['value'] for h in headers if h['name'].lower() == 'from'), 'Unknown Sender')
+    subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), 'No Subject')
+    
+    extracted_urls = set()
+    attachment_metadata = []
+
+    def walk_parts(part):
+        mime_type = part.get('mimeType', '')
+        body = part.get('body', {})
+        data = body.get('data')
+        filename = part.get('filename')
+
+        # 1. Attachment Handling (Metadata only)
+        if filename and body.get('attachmentId'):
+            attachment_metadata.append(AttachmentMetadata(
+                filename=filename,
+                mime_type=mime_type,
+                size=body.get('size', 0)
+            ))
+            # Do NOT fetch attachment content (security constraint)
+            return
+
+        # 2. Body Content Handling (URLs)
+        if mime_type in ['text/plain', 'text/html'] and data:
+            try:
+                # Gmail API uses Base64URL encoding
+                decoded_data = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                # Simple regex for URLs - can be refined
+                urls = re.findall(r'https?://[^\s<>"]+|www\.[^\s<>"]+', decoded_data)
+                extracted_urls.update(urls)
+            except Exception as e:
+                logger.warning(f"Failed to decode part body in {msg_id}: {e}")
+
+        # 3. Recursion
+        if 'parts' in part:
+            for subpart in part['parts']:
+                walk_parts(subpart)
+        # Handle payload valid for non-multipart
+        if 'parts' not in part and not filename and mime_type.startswith('multipart'):
+             # This handles cases where multipart info might be nested differently or top level
+             # But 'parts' usually exists. Check payload.
+             pass 
+
+    # Start recursion from top-level payload
+    walk_parts(payload)
+
     return StructuredEmailPayload(
-        message_id=f"mock-msg-{history_id}",
-        sender="sender@example.com",
-        subject="Mock Suspicious Email",
-        extracted_urls=["http://malware-example.com/login", "https://fishing-site.com"],
-        attachment_metadata=[
-            AttachmentMetadata(filename="invoice.pdf", mime_type="application/pdf", size=10240),
-            AttachmentMetadata(filename="evil.exe", mime_type="application/x-msdownload", size=512)
-        ]
+        message_id=msg_id,
+        sender=sender,
+        subject=subject,
+        extracted_urls=list(extracted_urls),
+        attachment_metadata=attachment_metadata
     )
+
+def process_gmail_event(email_address: str, history_id: int) -> List[StructuredEmailPayload]:
+    """
+    Orchestrates Gmail API calls:
+    1. Auth (ADC).
+    2. List history to find changed messages.
+    3. Fetch full message details.
+    4. Extract content.
+    """
+    service = get_gmail_service()
+    payloads = []
+
+    try:
+        # 1. List History
+        logger.info(f"Querying history for {email_address} since {history_id}")
+        history_response = service.users().history().list(
+            userId='me', 
+            startHistoryId=history_id
+        ).execute()
+
+        # Handle "HistoryId Not Found" (404-like logic or just empty history)
+        # If historyId is too old, Gmail returns historyIdNotFound error usually raised by execute()
+        # This block handles valid response but maybe no history.
+        if 'history' not in history_response:
+             logger.info("No history found for this ID (might be up to date)")
+             return []
+
+        # 2. Deduplicate Messages
+        message_ids = set()
+        for record in history_response['history']:
+            if 'messagesAdded' in record:
+                for msg in record['messagesAdded']:
+                    if 'message' in msg and 'id' in msg['message']:
+                        message_ids.add(msg['message']['id'])
+        
+        logger.info(f"Found {len(message_ids)} new messages")
+
+        # 3. Fetch & Extract
+        for msg_id in message_ids:
+            try:
+                message_detail = service.users().messages().get(
+                    userId='me', 
+                    id=msg_id, 
+                    format='full'
+                ).execute()
+                
+                structured = extract_message_content(message_detail)
+                payloads.append(structured)
+            except Exception as e:
+                logger.error(f"Failed to fetch/extract message {msg_id}: {e}")
+                # Continue processing other messages
+                continue
+
+    except HttpError as e:
+        if e.resp.status == 404:
+            logger.warning("History ID not found (too old). synchronizing...", extra={"historyId": history_id})
+            # In a real sync engine, we'd do a full sync. Here we just skip/ACK as per plan.
+            return []
+        else:
+            logger.error(f"Gmail API error: {e}")
+            raise # Let outer handler catch and decided whether to ACK
+
+    return payloads
 
 def forward_to_decision_agent(payload: StructuredEmailPayload):
     """
     Forwards the structured payload to the Decision Agent.
-    Catches all exceptions to ensure we return 200 to Pub/Sub.
     """
     try:
-        logger.info("Forwarding payload to Decision Agent", extra={"url": DECISION_AGENT_URL, "payload": payload.model_dump()})
+        logger.info("Forwarding payload to Decision Agent", extra={"url": DECISION_AGENT_URL, "message_id": payload.message_id})
         response = requests.post(
             DECISION_AGENT_URL,
             json=payload.model_dump(),
-            timeout=5 # Short timeout for "fire-and-forget" feel
+            timeout=5 
         )
         response.raise_for_status()
         logger.info("Successfully forwarded to Decision Agent", extra={"status_code": response.status_code})
     except requests.exceptions.RequestException as e:
-        # CRITICAL: We log the error but do NOT raise. 
-        # We must ACK the Pub/Sub message so it doesn't redeliver indefinitely.
-        logger.error(f"Failed to forward to Decision Agent: {e}", extra={"error": str(e)})
+        logger.error(f"Failed to forward msg {payload.message_id}: {e}", extra={"error": str(e)})
 
 
 # --- Endpoints ---
@@ -113,39 +225,36 @@ async def health_check():
 async def receive_pubsub_push(body: PubSubBody):
     """
     Handle incoming Pub/Sub push messages.
-    Returns 200 OK to acknowledge receipt, even if downstream fails.
     """
     try:
         # 1. Log receipt
         logger.info("Received Pub/Sub message", extra={"messageId": body.message.messageId})
 
         # 2. Decode the inner data
-        # Expecting: {"emailAddress": "...", "historyId": ...}
-        # Note: Actual Pub/Sub for Gmail push might just have historyId, but we'll stick to our plan's contract for now.
         decoded_data = decode_pubsub_data(body.message.data)
         
-        email_address = decoded_data.get("emailAddress", "unknown@example.com")
-        history_id = decoded_data.get("historyId", 0)
+        email_address = decoded_data.get("emailAddress", "me") # 'me' is valid for Gmail API with service account
+        history_id = decoded_data.get("historyId")
 
         if not history_id:
             logger.warning("No historyId found in message", extra={"data": decoded_data})
-            # Still ACK
             return {"status": "acked", "reason": "missing_history_id"}
 
-        # 3. Process (Mock for now)
-        structured_payload = mock_gmail_processing(email_address, history_id)
+        # 3. Process Gmail Event (Real API)
+        # Note: This might return empty list, one, or multiple payloads.
+        structured_payloads = process_gmail_event(email_address, history_id)
 
-        # 4. Forward (Fire-and-forget semantics)
-        forward_to_decision_agent(structured_payload)
+        # 4. Forward Each
+        for payload in structured_payloads:
+            forward_to_decision_agent(payload)
 
         # 5. ACK
         return {"status": "success"}
 
     except Exception as e:
-        # Catch-all to ensure we don't return 500 to Pub/Sub unless it's a transient issue we WANT to retry.
-        # For malformed data, we should ACK (return 200) to stop retries.
-        # For this design, we'll log exception and return 200 to be safe/stable in Cloud Run.
         logger.exception("Unexpected error processing message")
+        # Return 200 to ACK Pub/Sub to prevent retry of bad message (unless it's a transient server error we want to retry? 
+        # For this exercise, we prioritize system stability -> ACK)
         return {"status": "error_handled"}
 
 if __name__ == "__main__":

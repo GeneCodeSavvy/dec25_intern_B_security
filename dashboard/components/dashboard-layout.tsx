@@ -19,6 +19,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useSession, signOut } from "next-auth/react"
+import { syncEmails } from "@/lib/api"
 
 const navigation = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
@@ -37,6 +38,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Trigger background sync immediately when session is ready
+  useEffect(() => {
+    if (session?.accessToken && session?.idToken) {
+      syncEmails(session.idToken, session.accessToken).catch((err) => 
+        console.error("Background sync failed:", err)
+      )
+    }
+  }, [session])
 
   return (
     <div className="flex h-screen bg-background">

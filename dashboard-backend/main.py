@@ -170,25 +170,36 @@ def fetch_gmail_messages(access_token: str, limit: int = 10) -> list[dict]:
         results = service.users().messages().list(userId="me", maxResults=limit).execute()
         messages = results.get("messages", [])
 
+        if not messages:
+            return []
+
         email_data = []
-        for msg in messages:
-            # Get full message details
-            msg_detail = service.users().messages().get(userId="me", id=msg["id"], format="full").execute()
-            
-            headers = msg_detail.get("payload", {}).get("headers", [])
+
+        def callback(request_id, response, exception):
+            if exception:
+                logger.error(f"Error fetching message {request_id}: {exception}")
+                return
+
+            headers = response.get("payload", {}).get("headers", [])
             subject = next((h["value"] for h in headers if h["name"] == "Subject"), "(No Subject)")
             sender = next((h["value"] for h in headers if h["name"] == "From"), "Unknown")
             recipient = next((h["value"] for h in headers if h["name"] == "To"), "Unknown")
-            snippet = msg_detail.get("snippet", "")
-
+            snippet = response.get("snippet", "")
+            
             email_data.append({
                 "sender": sender,
                 "recipient": recipient,
                 "subject": subject,
                 "body_preview": snippet,
-                "message_id": msg["id"],
+                "message_id": response["id"],
                 "status": EmailStatus.pending
             })
+
+        batch = service.new_batch_http_request(callback=callback)
+        for msg in messages:
+            batch.add(service.users().messages().get(userId="me", id=msg["id"], format="full"))
+        
+        batch.execute()
             
         return email_data
     except Exception as e:
@@ -407,6 +418,8 @@ async def list_emails(
     return result.all()
 
 
+from starlette.concurrency import run_in_threadpool
+
 @app.post("/api/emails/sync", status_code=status.HTTP_202_ACCEPTED)
 async def sync_emails(
     x_google_token: str = Header(..., alias="X-Google-Token"),
@@ -415,8 +428,8 @@ async def sync_emails(
 ) -> dict:
     """Trigger background sync of emails from Gmail."""
     try:
-        # Fetch recent messages
-        gmail_emails = fetch_gmail_messages(x_google_token, limit=20)
+        # Fetch recent messages in a thread pool to avoid blocking the event loop
+        gmail_emails = await run_in_threadpool(fetch_gmail_messages, x_google_token, limit=20)
         
         count = 0
         for g_email in gmail_emails:

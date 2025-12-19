@@ -4,10 +4,10 @@ import os
 from collections.abc import AsyncGenerator
 
 from dotenv import load_dotenv
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel.ext.asyncio.session import create_async_engine
 
 from .models import EmailEvent, User  # noqa: F401 - ensure metadata import
 
@@ -29,15 +29,13 @@ if not DATABASE_URL.startswith("postgresql+asyncpg://"):
     )
 
 # GCP Cloud SQL PostgreSQL configuration
-# Using QueuePool for connection pooling (suitable for long-running services)
+# Using NullPool for async engines (SQLAlchemy 2.0+ requirement)
+# For production, connection pooling is handled at the Cloud SQL proxy level
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     future=True,
-    poolclass=QueuePool,
-    pool_size=5,  # Number of connections to keep open
-    max_overflow=10,  # Additional connections allowed beyond pool_size
-    pool_pre_ping=True,  # Verify connections before using (handles dropped connections)
+    poolclass=NullPool,  # NullPool is recommended for async engines
 )
 
 

@@ -179,7 +179,7 @@ export function EmailsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email ID</TableHead>
+
                   <TableHead>Recipient</TableHead>
                   <TableHead>Sender</TableHead>
                   <TableHead>Subject</TableHead>
@@ -191,13 +191,14 @@ export function EmailsPage() {
               <TableBody>
                 {filteredEmails.map((email) => (
                   <TableRow key={email.id} className="cursor-pointer hover:bg-accent/50">
-                    <TableCell>
-                      <code className="text-xs font-mono text-muted-foreground">{email.id}</code>
-                    </TableCell>
+
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Mail className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm text-foreground">{email.recipient}</span>
+                        <span className="text-sm text-foreground" title={email.recipient}>
+                          {email.recipient.split(",")[0]}
+                          {email.recipient.split(",").length > 1 && <span className="text-muted-foreground ml-1">+{email.recipient.split(",").length - 1}</span>}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>

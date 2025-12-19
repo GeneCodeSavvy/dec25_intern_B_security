@@ -167,6 +167,7 @@ def fetch_gmail_messages(access_token: str, limit: int = 10) -> list[dict]:
         service = build("gmail", "v1", credentials=creds)
 
         # List messages
+        # List messages
         results = service.users().messages().list(userId="me", maxResults=limit).execute()
         messages = results.get("messages", [])
 
@@ -186,13 +187,15 @@ def fetch_gmail_messages(access_token: str, limit: int = 10) -> list[dict]:
             recipient = next((h["value"] for h in headers if h["name"] == "To"), "Unknown")
             snippet = response.get("snippet", "")
             
+            status = EmailStatus.pending
+            
             email_data.append({
                 "sender": sender,
                 "recipient": recipient,
                 "subject": subject,
                 "body_preview": snippet,
                 "message_id": response["id"],
-                "status": EmailStatus.pending
+                "status": status
             })
 
         batch = service.new_batch_http_request(callback=callback)

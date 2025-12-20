@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+from sqlalchemy import DateTime
 from sqlmodel import JSON, Column, Enum, Field, SQLModel
 
 
@@ -108,4 +109,5 @@ class EmailEvent(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=utc_now,
         nullable=False,
+        sa_column=Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False),
     )

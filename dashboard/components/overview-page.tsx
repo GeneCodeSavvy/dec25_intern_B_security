@@ -136,6 +136,7 @@ export function OverviewPage() {
         </CardHeader>
         <CardContent>
           <ChartContainer
+            id="email-activity-chart"
             config={{
               threats: {
                 label: "Threats Detected",

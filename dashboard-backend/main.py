@@ -17,6 +17,7 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -342,9 +343,16 @@ async def get_current_user(
             name=name,
         )
         session.add(user)
-        await session.commit()
-        await session.refresh(user)
-        logger.info(f"Created new user: {email} (id: {user.id})")
+        try:
+            await session.commit()
+            await session.refresh(user)
+            logger.info(f"Created new user: {email} (id: {user.id})")
+        except IntegrityError:
+            await session.rollback()
+            # Race condition: user created by another request concurrently
+            logger.warning(f"User {email} already exists (race condition handled), fetching existing user.")
+            result = await session.exec(select(User).where(User.google_id == google_id))
+            user = result.first()
 
     return user
 

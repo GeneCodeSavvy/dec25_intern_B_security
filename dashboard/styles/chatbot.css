@@ -1,25 +1,25 @@
-/* Luffy Chatbot - Neo-Tokyo / Zen-Minimalist Dark Mode Theme */
+/* Luffy Chatbot - MailShieldAI Theme */
 
 /* ============================================
    CSS Custom Properties for Chatbot
    ============================================ */
 :root {
-  /* Neo-Tokyo Neon Colors */
-  --luffy-cyan: oklch(0.75 0.15 195);
-  --luffy-cyan-glow: oklch(0.65 0.20 195);
-  --luffy-blue: oklch(0.60 0.18 250);
-  --luffy-purple: oklch(0.55 0.22 280);
-  --luffy-red-alert: oklch(0.60 0.25 25);
-  --luffy-green-safe: oklch(0.65 0.20 145);
+  /* MailShieldAI Theme Colors (matching project primary) */
+  --luffy-primary: oklch(0.58 0.24 264);
+  --luffy-primary-glow: oklch(0.52 0.22 264);
+  --luffy-secondary: oklch(0.48 0.24 264);
+  --luffy-accent: oklch(0.65 0.20 280);
+  --luffy-red-alert: oklch(0.58 0.24 27);
+  --luffy-green-safe: oklch(0.65 0.18 162);
 
   /* Glassmorphism */
-  --luffy-glass-bg: rgba(15, 23, 42, 0.85);
-  --luffy-glass-border: rgba(100, 200, 255, 0.2);
+  --luffy-glass-bg: rgba(22, 22, 30, 0.92);
+  --luffy-glass-border: rgba(139, 92, 246, 0.25);
   --luffy-glass-blur: 20px;
 
   /* Gradients */
-  --luffy-gradient: linear-gradient(135deg, var(--luffy-cyan) 0%, var(--luffy-blue) 50%, var(--luffy-purple) 100%);
-  --luffy-gradient-subtle: linear-gradient(135deg, rgba(0, 200, 255, 0.1) 0%, rgba(100, 150, 255, 0.05) 100%);
+  --luffy-gradient: linear-gradient(135deg, var(--luffy-primary) 0%, var(--luffy-secondary) 50%, var(--luffy-accent) 100%);
+  --luffy-gradient-subtle: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
 }
 
 /* ============================================
@@ -43,8 +43,8 @@
   background: var(--luffy-gradient);
   border: 2px solid var(--luffy-glass-border);
   box-shadow:
-    0 0 20px rgba(0, 200, 255, 0.4),
-    0 0 40px rgba(0, 200, 255, 0.2),
+    0 0 20px rgba(139, 92, 246, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.2),
     0 8px 32px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   display: flex;
@@ -70,8 +70,8 @@
 .luffy-fab:hover {
   transform: scale(1.1);
   box-shadow:
-    0 0 30px rgba(0, 200, 255, 0.6),
-    0 0 60px rgba(0, 200, 255, 0.3),
+    0 0 30px rgba(139, 92, 246, 0.6),
+    0 0 60px rgba(139, 92, 246, 0.3),
     0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
@@ -99,7 +99,7 @@
   border: 1px solid var(--luffy-glass-border);
   border-radius: 24px;
   box-shadow:
-    0 0 40px rgba(0, 200, 255, 0.15),
+    0 0 40px rgba(139, 92, 246, 0.15),
     0 25px 50px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
@@ -141,7 +141,7 @@
    ============================================ */
 .luffy-chat-header {
   padding: 16px 20px;
-  background: linear-gradient(180deg, rgba(0, 200, 255, 0.1) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
   border-bottom: 1px solid var(--luffy-glass-border);
   display: flex;
   align-items: center;
@@ -166,7 +166,7 @@
   font-size: 20px;
   font-weight: 700;
   color: white;
-  box-shadow: 0 0 15px rgba(0, 200, 255, 0.4);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -239,9 +239,9 @@
 }
 
 .luffy-voice-btn:hover:not(:disabled) {
-  background: rgba(0, 200, 255, 0.2);
-  color: var(--luffy-cyan);
-  border-color: var(--luffy-cyan);
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--luffy-primary);
+  border-color: var(--luffy-primary);
 }
 
 .luffy-voice-btn:disabled {
@@ -307,12 +307,12 @@
 }
 
 .luffy-messages::-webkit-scrollbar-thumb {
-  background: rgba(0, 200, 255, 0.3);
+  background: rgba(139, 92, 246, 0.3);
   border-radius: 3px;
 }
 
 .luffy-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 200, 255, 0.5);
+  background: rgba(139, 92, 246, 0.5);
 }
 
 /* ============================================
@@ -369,7 +369,7 @@
 .luffy-message-bubble h3 {
   margin: 0.5em 0 0.3em;
   font-size: 1.1em;
-  color: var(--luffy-cyan);
+  color: var(--luffy-primary);
 }
 
 .luffy-message-bubble p {
@@ -377,11 +377,11 @@
 }
 
 .luffy-message-bubble strong {
-  color: var(--luffy-cyan);
+  color: var(--luffy-primary);
 }
 
 .luffy-message-bubble code {
-  background: rgba(0, 200, 255, 0.15);
+  background: rgba(139, 92, 246, 0.15);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Geist Mono', monospace;
@@ -408,7 +408,7 @@
 
 .luffy-message-bubble hr {
   border: none;
-  border-top: 1px solid rgba(0, 200, 255, 0.3);
+  border-top: 1px solid rgba(139, 92, 246, 0.3);
   margin: 16px 0;
 }
 
@@ -430,7 +430,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--luffy-cyan);
+  background: var(--luffy-primary);
   animation: typing-bounce 1.4s ease-in-out infinite;
 }
 
@@ -472,9 +472,9 @@
 .luffy-chip {
   padding: 8px 14px;
   border-radius: 20px;
-  background: rgba(0, 200, 255, 0.1);
-  border: 1px solid rgba(0, 200, 255, 0.3);
-  color: var(--luffy-cyan);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--luffy-primary);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -482,9 +482,9 @@
 }
 
 .luffy-chip:hover {
-  background: rgba(0, 200, 255, 0.2);
-  border-color: var(--luffy-cyan);
-  box-shadow: 0 0 15px rgba(0, 200, 255, 0.3);
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--luffy-primary);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
   transform: translateY(-1px);
 }
 
@@ -523,8 +523,8 @@
 }
 
 .luffy-input:focus {
-  border-color: var(--luffy-cyan);
-  box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
+  border-color: var(--luffy-primary);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -540,12 +540,12 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 0 15px rgba(0, 200, 255, 0.3);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
 }
 
 .luffy-send-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  box-shadow: 0 0 25px rgba(0, 200, 255, 0.5);
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
 }
 
 .luffy-send-btn:disabled {
@@ -611,7 +611,7 @@
 .luffy-chip:focus-visible,
 .luffy-send-btn:focus-visible,
 .luffy-input:focus-visible {
-  outline: 2px solid var(--luffy-cyan);
+  outline: 2px solid var(--luffy-primary);
   outline-offset: 2px;
 }
 
@@ -687,7 +687,7 @@
 .luffy-shimmer {
   background: linear-gradient(90deg,
       rgba(255, 255, 255, 0.05) 0%,
-      rgba(0, 200, 255, 0.1) 50%,
+      rgba(139, 92, 246, 0.1) 50%,
       rgba(255, 255, 255, 0.05) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -748,7 +748,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--luffy-cyan), transparent);
+  background: linear-gradient(90deg, transparent, var(--luffy-primary), transparent);
   animation: scan-line 2s linear infinite;
   pointer-events: none;
 }

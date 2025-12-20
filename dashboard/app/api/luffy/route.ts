@@ -86,7 +86,7 @@ ${JSON.stringify(dummyEmails, null, 2)}
 
         // Build conversation for Gemini
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "models/gemini-2.0-flash",
             systemInstruction: LUFFY_SYSTEM_PROMPT + "\n\n" + emailContext
         })
 

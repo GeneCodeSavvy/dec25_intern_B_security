@@ -205,6 +205,50 @@
   color: white;
 }
 
+.luffy-header-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.luffy-header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.luffy-voice-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.luffy-voice-btn:hover:not(:disabled) {
+  background: rgba(0, 200, 255, 0.2);
+  color: var(--luffy-cyan);
+  border-color: var(--luffy-cyan);
+}
+
+.luffy-voice-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ============================================
    Status Indicator
    ============================================ */

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useSession } from "next-auth/react"
-import { AlertTriangle, CheckCircle, Filter, Mail, Paperclip, Search, Shield, XCircle, RefreshCw } from "lucide-react"
+import { AlertTriangle, CheckCircle, Paperclip, Search, XCircle, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

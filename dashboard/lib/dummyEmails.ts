@@ -1,5 +1,19 @@
-// Dummy email data for Luffy AI Security Guardian
-// This data simulates real email threats for the chatbot to analyze
+/**
+ * Dummy Email Data for Luffy AI Security Guardian
+ * 
+ * This module provides simulated email threat data for demonstration purposes.
+ * Each email includes detailed analysis information that Luffy uses to explain
+ * why emails are suspicious or dangerous.
+ * 
+ * Threat Types:
+ * - Phishing: Attempts to steal credentials via fake login pages
+ * - Malware: Contains malicious attachments or links
+ * - BEC: Business Email Compromise targeting financial transactions
+ * - Spam: Unsolicited commercial/scam emails
+ * - Safe: Legitimate verified emails
+ * 
+ * @module dummyEmails
+ */
 
 export interface EmailThreatData {
     id: string

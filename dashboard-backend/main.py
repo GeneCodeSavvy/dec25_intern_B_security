@@ -183,10 +183,15 @@ def _parse_auth_results(auth_results: str) -> dict[str, str]:
 
 
 def _extract_sender_ip(received_headers: list[str]) -> str | None:
-    """Extract sender IP from Received headers."""
+    """Extract originating sender IP from Received headers.
+    
+    Iterates headers in reverse (bottom-to-top) to find the originating IP,
+    as the bottommost Received header is added by the first server to receive
+    the email and is most likely to contain the actual sender's IP.
+    """
     import re
     
-    for received in received_headers:
+    for received in reversed(received_headers):
         # Look for IP patterns in square brackets
         ip_match = re.search(r'\[(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]', received)
         if ip_match:

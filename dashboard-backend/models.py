@@ -12,17 +12,17 @@ from sqlmodel import JSON, Column, Enum, Field, SQLModel
 
 class EmailStatus(str, enum.Enum):
     """Status of email analysis processing."""
-    pending = "PENDING"
-    processing = "PROCESSING"
-    completed = "COMPLETED"
-    failed = "FAILED"
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class RiskTier(str, enum.Enum):
     """Risk classification tier for analyzed emails."""
-    safe = "SAFE"
-    cautious = "CAUTIOUS"
-    threat = "THREAT"
+    SAFE = "SAFE"
+    CAUTIOUS = "CAUTIOUS"
+    THREAT = "THREAT"
 
 
 def utc_now() -> datetime:
@@ -46,13 +46,13 @@ class User(SQLModel, table=True):
 
 class ThreatCategory(str, enum.Enum):
     """Category of detected threat."""
-    none = "NONE"
-    phishing = "PHISHING"
-    malware = "MALWARE"
-    spam = "SPAM"
-    bec = "BEC"  # Business Email Compromise
-    spoofing = "SPOOFING"
-    suspicious = "SUSPICIOUS"
+    NONE = "NONE"
+    PHISHING = "PHISHING"
+    MALWARE = "MALWARE"
+    SPAM = "SPAM"
+    BEC = "BEC"  # Business Email Compromise
+    SPOOFING = "SPOOFING"
+    SUSPICIOUS = "SUSPICIOUS"
 
 
 class EmailEvent(SQLModel, table=True):
@@ -86,7 +86,7 @@ class EmailEvent(SQLModel, table=True):
     
     # Processing Fields
     status: EmailStatus = Field(
-        default=EmailStatus.pending,
+        default=EmailStatus.PENDING,
         sa_column=Column(
             Enum(EmailStatus, name="email_status_enum", create_type=False),
             server_default="PENDING",

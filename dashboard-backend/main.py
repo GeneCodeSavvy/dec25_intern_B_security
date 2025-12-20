@@ -281,7 +281,7 @@ def fetch_gmail_messages(access_token: str, limit: int = 20) -> list[dict]:
                     "dmarc_status": auth_status["dmarc"],
                     "sender_ip": sender_ip,
                     "attachment_info": attachment_info,
-                    "status": EmailStatus.pending,
+                    "status": EmailStatus.PENDING,
                 })
             except Exception as e:
                 logger.warning(f"Failed to parse message {msg['id']}: {e}")
@@ -401,7 +401,7 @@ async def ingest_email(
         recipient=payload.recipient,
         subject=payload.subject,
         body_preview=payload.body_preview,
-        status=EmailStatus.pending,
+        status=EmailStatus.PENDING,
     )
     session.add(email)
     await session.commit()
@@ -461,7 +461,7 @@ async def sync_emails(
                 dmarc_status=g_email.get("dmarc_status"),
                 sender_ip=g_email.get("sender_ip"),
                 attachment_info=g_email.get("attachment_info"),
-                status=EmailStatus.pending,
+                status=EmailStatus.PENDING,
             )
             session.add(email)
             count += 1

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { useSession } from "next-auth/react"
-import { Filter, Mail, Search } from "lucide-react"
+import { AlertTriangle, CheckCircle, Filter, Mail, Paperclip, Search, Shield, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +16,34 @@ const tierColor: Record<string, string> = {
   SAFE: "text-green-500 bg-green-500/10",
   CAUTIOUS: "text-yellow-600 bg-yellow-500/10",
   THREAT: "text-destructive bg-destructive/10",
+}
+
+const threatCategoryColor: Record<string, string> = {
+  NONE: "text-green-500",
+  PHISHING: "text-red-500",
+  MALWARE: "text-red-600",
+  SPAM: "text-yellow-500",
+  BEC: "text-orange-500",
+  SPOOFING: "text-red-400",
+  SUSPICIOUS: "text-yellow-600",
+}
+
+const authStatusIcon = (status: string | undefined) => {
+  if (!status) return <span className="text-muted-foreground text-xs">-</span>
+  if (status === "PASS") return <CheckCircle className="h-3 w-3 text-green-500" />
+  if (status === "FAIL") return <XCircle className="h-3 w-3 text-red-500" />
+  return <AlertTriangle className="h-3 w-3 text-yellow-500" />
+}
+
+const formatDate = (dateStr: string | undefined) => {
+  if (!dateStr) return "-"
+  const date = new Date(dateStr)
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 export function EmailsPage() {
@@ -168,37 +196,45 @@ export function EmailsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email ID</TableHead>
-                  <TableHead>Recipient</TableHead>
+                  <TableHead className="w-[100px]">Time</TableHead>
                   <TableHead>Sender</TableHead>
                   <TableHead>Subject</TableHead>
+                  <TableHead>Threat</TableHead>
+                  <TableHead className="text-center">Score</TableHead>
+                  <TableHead className="text-center">Auth</TableHead>
+                  <TableHead>Attachments</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Risk</TableHead>
-                  <TableHead>Score</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEmails.map((email) => (
                   <TableRow key={email.id} className="cursor-pointer hover:bg-accent/50">
                     <TableCell>
-                      <code className="text-xs font-mono text-muted-foreground">{email.id}</code>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDate(email.received_at)}
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm text-foreground">{email.recipient}</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-foreground truncate max-w-[200px]" title={email.sender}>
+                          {email.sender}
+                        </span>
+                        {email.sender_ip && (
+                          <span className="text-xs text-muted-foreground font-mono">{email.sender_ip}</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-foreground">{email.sender}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-foreground max-w-xs truncate block">{email.subject}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {email.status}
-                      </Badge>
+                      <div className="flex flex-col max-w-[250px]">
+                        <span className="text-sm text-foreground truncate" title={email.subject}>
+                          {email.subject}
+                        </span>
+                        {email.detection_reason && (
+                          <span className="text-xs text-muted-foreground truncate" title={email.detection_reason}>
+                            {email.detection_reason}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -209,21 +245,66 @@ export function EmailsPage() {
                               {email.risk_tier}
                             </span>
                           </>
+                        ) : email.threat_category && email.threat_category !== "NONE" ? (
+                          <span className={`text-xs font-medium ${threatCategoryColor[email.threat_category] ?? "text-muted-foreground"}`}>
+                            {email.threat_category}
+                          </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Pending</span>
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-center">
+                      {email.risk_score !== undefined && email.risk_score !== null ? (
+                        <span className={`text-xs font-medium ${
+                          email.risk_score >= 70 ? "text-red-500" :
+                          email.risk_score >= 40 ? "text-yellow-500" :
+                          "text-green-500"
+                        }`}>
+                          {email.risk_score}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {email.risk_score ?? "-"}
-                      </span>
+                      <div className="flex items-center justify-center gap-1" title={`SPF: ${email.spf_status || "N/A"} | DKIM: ${email.dkim_status || "N/A"} | DMARC: ${email.dmarc_status || "N/A"}`}>
+                        <span className="flex items-center gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">S</span>
+                          {authStatusIcon(email.spf_status)}
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">D</span>
+                          {authStatusIcon(email.dkim_status)}
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">M</span>
+                          {authStatusIcon(email.dmarc_status)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {email.attachment_info ? (
+                        <div className="flex items-center gap-1" title={email.attachment_info}>
+                          <Paperclip className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+                            {email.attachment_info}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {email.status}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}
                 {!filteredEmails.length && !loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
                       No emails found for this filter.
                     </TableCell>
                   </TableRow>

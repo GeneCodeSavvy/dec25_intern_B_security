@@ -41,6 +41,20 @@ export type Email = {
   recipient: string
   subject: string
   body_preview?: string
+  received_at?: string
+  
+  // Threat Intelligence
+  threat_category?: "NONE" | "PHISHING" | "MALWARE" | "SPAM" | "BEC" | "SPOOFING" | "SUSPICIOUS"
+  detection_reason?: string
+  
+  // Security Metadata
+  spf_status?: string
+  dkim_status?: string
+  dmarc_status?: string
+  sender_ip?: string
+  attachment_info?: string
+  
+  // Processing
   status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
   risk_score?: number
   risk_tier?: "SAFE" | "CAUTIOUS" | "THREAT"

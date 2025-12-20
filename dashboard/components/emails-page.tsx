@@ -1,16 +1,17 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import * as React from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useSession } from "next-auth/react"
-import { AlertTriangle, CheckCircle, Filter, Mail, Paperclip, Search, Shield, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle, Filter, Mail, Paperclip, Search, Shield, XCircle, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { type Email, fetchEmails, syncEmails } from "@/lib/api"
+import { type Email, fetchEmails, fetchEmailsWithRefresh, syncEmails, clearEmailsCache } from "@/lib/api"
 
 const tierColor: Record<string, string> = {
   SAFE: "text-green-500 bg-green-500/10",
@@ -50,13 +51,27 @@ export function EmailsPage() {
   const { data: session } = useSession()
   const [emails, setEmails] = useState<Email[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>("all")
+
+  // Track sync state to avoid redundant syncs
+  const syncedRef = useRef(false)
+  const lastTokenRef = useRef<string | null>(null)
 
   useEffect(() => {
     let active = true
     const load = async () => {
-      setLoading(true)
+      // If the token hasn't changed, don't re-fetch to avoid flicker on tab switch
+      if (session?.idToken && lastTokenRef.current === session.idToken) {
+        return
+      }
+      
+      // Only show loading state if we have no data to avoid flash
+      if (emails.length === 0) {
+        setLoading(true)
+      }
+      
       setError(null)
       try {
         if (!session?.idToken) {
@@ -65,19 +80,18 @@ export function EmailsPage() {
           return
         }
 
-        // Trigger sync if we have an access token (background async or await?)
-        // User asked to "trigger fetch_gmail_messages... in a background task... ensure commits occur only for new records"
-        // On frontend, we should probably await sync then fetch, or fetch then sync in bg?
-        // The prompt implies we should trigger the sync.
-        if (session.accessToken) {
+        // Trigger sync only once per session mount
+        if (session.accessToken && !syncedRef.current) {
+          syncedRef.current = true
           // Fire and forget sync, don't block UI
           syncEmails(session.idToken, session.accessToken).catch(console.error)
         }
 
-        // Fetch local db emails
+        // Fetch emails (uses cache if available)
         const data = await fetchEmails(session.idToken)
         if (active) {
           setEmails(data)
+          lastTokenRef.current = session.idToken
         }
       } catch (err) {
         if (active) {
@@ -94,7 +108,25 @@ export function EmailsPage() {
     return () => {
       active = false
     }
-  }, [session])
+  }, [session, emails.length])
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    if (!session?.idToken || !session?.accessToken) return
+    
+    setRefreshing(true)
+    try {
+      // Clear cache and sync fresh data
+      clearEmailsCache()
+      await syncEmails(session.idToken, session.accessToken)
+      const data = await fetchEmailsWithRefresh(session.idToken)
+      setEmails(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh emails")
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const filteredEmails = useMemo(() => {
     if (statusFilter === "all") return emails
@@ -180,10 +212,17 @@ export function EmailsPage() {
                   <SelectItem value="PROCESSING">Processing</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>
                   <SelectItem value="FAILED">Failed</SelectItem>
+                  <SelectItem value="SPAM">Spam</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title="Refresh emails"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               </Button>
             </div>
           </div>

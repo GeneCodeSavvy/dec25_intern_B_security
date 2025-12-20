@@ -19,6 +19,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from database import get_session, init_db
 from models import EmailEvent, EmailStatus, RiskTier, ThreatCategory, User
@@ -227,22 +228,28 @@ def _parse_email_date(date_str: str) -> datetime | None:
 
 
 def fetch_gmail_messages(access_token: str, limit: int = 20) -> list[dict]:
-    """Fetch emails from Gmail API using the provided access token with full metadata."""
+    """Fetch emails from Gmail API using batch requests for better performance."""
     try:
         creds = Credentials(token=access_token)
         service = build("gmail", "v1", credentials=creds)
 
-        # List messages
-        results = service.users().messages().list(userId="me", maxResults=limit).execute()
+        # List messages (include spam/trash for complete view)
+        results = service.users().messages().list(userId="me", maxResults=limit, includeSpamTrash=True).execute()
         messages = results.get("messages", [])
 
+        if not messages:
+            return []
+
         email_data = []
-        for msg in messages:
+
+        def callback(request_id, response, exception):
+            """Callback for batch request processing."""
+            if exception:
+                logger.error(f"Error fetching message {request_id}: {exception}")
+                return
+            
             try:
-                # Get full message details
-                msg_detail = service.users().messages().get(userId="me", id=msg["id"], format="full").execute()
-                
-                payload = msg_detail.get("payload", {})
+                payload = response.get("payload", {})
                 headers = payload.get("headers", [])
                 
                 # Create a dict for easier header lookup
@@ -252,7 +259,7 @@ def fetch_gmail_messages(access_token: str, limit: int = 20) -> list[dict]:
                 subject = headers_dict.get("subject", "(No Subject)")
                 sender = headers_dict.get("from", "Unknown")
                 recipient = headers_dict.get("to", "Unknown")
-                snippet = msg_detail.get("snippet", "")
+                snippet = response.get("snippet", "")
                 
                 # Timestamp
                 date_str = headers_dict.get("date")
@@ -268,24 +275,35 @@ def fetch_gmail_messages(access_token: str, limit: int = 20) -> list[dict]:
                 
                 # Attachments
                 attachment_info = _extract_attachments(payload)
+                
+                # Check if email is in SPAM folder
+                status = EmailStatus.PENDING
+                if "SPAM" in response.get("labelIds", []):
+                    status = EmailStatus.SPAM
 
                 email_data.append({
                     "sender": sender,
                     "recipient": recipient,
                     "subject": subject,
                     "body_preview": snippet,
-                    "message_id": msg["id"],
+                    "message_id": response["id"],
                     "received_at": received_at,
                     "spf_status": auth_status["spf"],
                     "dkim_status": auth_status["dkim"],
                     "dmarc_status": auth_status["dmarc"],
                     "sender_ip": sender_ip,
                     "attachment_info": attachment_info,
-                    "status": EmailStatus.PENDING,
+                    "status": status,
                 })
             except Exception as e:
-                logger.warning(f"Failed to parse message {msg['id']}: {e}")
-                continue
+                logger.warning(f"Failed to parse message in batch callback: {e}")
+
+        # Use batch request for better performance
+        batch = service.new_batch_http_request(callback=callback)
+        for msg in messages:
+            batch.add(service.users().messages().get(userId="me", id=msg["id"], format="full"))
+        
+        batch.execute()
             
         return email_data
     except Exception as e:
@@ -435,8 +453,8 @@ async def sync_emails(
 ) -> dict:
     """Sync emails from Gmail with full metadata."""
     try:
-        # Fetch recent messages with full metadata
-        gmail_emails = fetch_gmail_messages(x_google_token, limit=20)
+        # Fetch recent messages in a thread pool to avoid blocking the event loop
+        gmail_emails = await run_in_threadpool(fetch_gmail_messages, x_google_token, 20)
         
         count = 0
         for g_email in gmail_emails:

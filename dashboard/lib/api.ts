@@ -1,5 +1,14 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
+// Cache configuration
+const EMAILS_CACHE_KEY = "mailshield_emails_cache"
+const CACHE_EXPIRY_MS = 5 * 60 * 1000 // 5 minutes
+
+type CacheEntry<T> = {
+  data: T
+  timestamp: number
+}
+
 type FetchOptions = {
   token?: string
   headers?: Record<string, string>
@@ -35,6 +44,47 @@ async function request<T>(path: string, { token, headers, method = "GET", body }
   return res.json() as Promise<T>
 }
 
+// Cache utilities
+function getCachedEmails(): Email[] | null {
+  if (typeof window === "undefined") return null
+  
+  try {
+    const cached = localStorage.getItem(EMAILS_CACHE_KEY)
+    if (!cached) return null
+    
+    const entry: CacheEntry<Email[]> = JSON.parse(cached)
+    const isExpired = Date.now() - entry.timestamp > CACHE_EXPIRY_MS
+    
+    if (isExpired) {
+      localStorage.removeItem(EMAILS_CACHE_KEY)
+      return null
+    }
+    
+    return entry.data
+  } catch {
+    return null
+  }
+}
+
+function setCachedEmails(emails: Email[]): void {
+  if (typeof window === "undefined") return
+  
+  try {
+    const entry: CacheEntry<Email[]> = {
+      data: emails,
+      timestamp: Date.now(),
+    }
+    localStorage.setItem(EMAILS_CACHE_KEY, JSON.stringify(entry))
+  } catch {
+    // Ignore storage errors (quota exceeded, etc.)
+  }
+}
+
+export function clearEmailsCache(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(EMAILS_CACHE_KEY)
+}
+
 export type Email = {
   id: string
   sender: string
@@ -55,14 +105,35 @@ export type Email = {
   attachment_info?: string
   
   // Processing
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "SPAM"
   risk_score?: number
   risk_tier?: "SAFE" | "CAUTIOUS" | "THREAT"
   analysis_result?: Record<string, unknown>
 }
 
-export async function fetchEmails(token: string): Promise<Email[]> {
-  return request<Email[]>("/api/emails", { token })
+export async function fetchEmails(token: string, options?: { skipCache?: boolean }): Promise<Email[]> {
+  // Return cached data if available and not skipping cache
+  if (!options?.skipCache) {
+    const cached = getCachedEmails()
+    if (cached) {
+      return cached
+    }
+  }
+  
+  // Fetch from API (limit to 20 most recent)
+  const emails = await request<Email[]>("/api/emails?limit=20", { token })
+  
+  // Cache the result
+  setCachedEmails(emails)
+  
+  return emails
+}
+
+export async function fetchEmailsWithRefresh(token: string): Promise<Email[]> {
+  // Always fetch fresh data and update cache
+  const emails = await request<Email[]>("/api/emails?limit=20", { token })
+  setCachedEmails(emails)
+  return emails
 }
 
 export async function syncEmails(token: string, googleToken: string): Promise<{ status: string, new_messages: number }> {

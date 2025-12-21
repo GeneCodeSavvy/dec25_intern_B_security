@@ -8,7 +8,7 @@ class SimpleHandler(BaseHTTPRequestHandler):
         print("\n[MOCK FINAL AGENT] Received Decision:")
         try:
             print(json.dumps(json.loads(post_data), indent=2))
-        except:
+        except json.JSONDecodeError:
             print(post_data.decode('utf-8'))
         
         self.send_response(200)

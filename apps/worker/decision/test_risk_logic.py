@@ -3,7 +3,9 @@ import asyncio
 from main import evaluate_static_risk, StructuredEmailPayload, AttachmentMetadata, RISKY_EXTENSIONS
 
 # Mock Payload Factory
-def create_payload(filename="safe.txt", mime="text/plain", urls=[]):
+def create_payload(filename="safe.txt", mime="text/plain", urls=None):
+    if urls is None:
+        urls = []
     return StructuredEmailPayload(
         message_id="test-123",
         sender="test@example.com",

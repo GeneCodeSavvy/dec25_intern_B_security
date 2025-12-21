@@ -22,8 +22,8 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
-from database import get_session, init_db
-from models import EmailEvent, EmailStatus, RiskTier, ThreatCategory, User
+from packages.shared.database import get_session, init_db
+from packages.shared.models import EmailEvent, EmailStatus, RiskTier, ThreatCategory, User
 
 load_dotenv()
 

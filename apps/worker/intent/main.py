@@ -4,6 +4,7 @@ import asyncio
 import random
 from datetime import datetime, timezone
 
+from fastapi import FastAPI
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -31,7 +32,6 @@ def build_dummy_analysis(score: int) -> dict:
 
 
 async def process_email(session: AsyncSession, email: EmailEvent) -> None:
-    email.status = EmailStatus.PROCESSING
     session.add(email)
     await session.commit()
     await session.refresh(email)
@@ -61,13 +61,13 @@ async def run_loop() -> None:
     """
     await init_db()
     redis = await get_redis_client()
-    print(f"Worker started. Listening on {EMAIL_PROCESSING_QUEUE}...")
+    print(f"Worker started. Listening on {EMAIL_INTENT_QUEUE}...")
 
     while True:
         try:
             # Block until an item is available
             # blpop returns (queue_name, element) or None if timeout
-            result = await redis.blpop(EMAIL_PROCESSING_QUEUE, timeout=5)
+            result = await redis.blpop(EMAIL_INTENT_QUEUE, timeout=5)
             
             if not result:
                 continue
@@ -104,8 +104,28 @@ async def run_loop() -> None:
             await asyncio.sleep(1)
 
 
+app = FastAPI()
+
+
+@app.get("/")
+async def health_check():
+    """Health check endpoint for Cloud Run."""
+    return {"status": "ok", "service": "agent-worker"}
+
+
+@app.on_event("startup")
+async def on_startup():
+    """Start the worker loop in the background."""
+    # Run the worker loop as a background task
+    asyncio.create_task(run_loop())
+
+
 def main() -> None:
-    asyncio.run(run_loop())
+    """Entry point for the worker service."""
+    port = int(os.getenv("PORT", "8080"))
+    # Run uvicorn server
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

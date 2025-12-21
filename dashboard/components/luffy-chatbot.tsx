@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -59,6 +60,8 @@ I am your AI-powered email security guardian. My capabilities include:
 }
 
 export function LuffyChatbot() {
+    const { data: session } = useSession()
+    
     // State
     const [isOpen, setIsOpen] = useState(false)
     const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
@@ -177,12 +180,13 @@ export function LuffyChatbot() {
         sendMessage(inputValue)
     }
 
-    // Handle quick action click
     const handleQuickAction = (query: string) => {
         setInputValue(query)
         // Small delay to allow visual feedback
         setTimeout(() => sendMessage(query), 100)
     }
+
+    if (!session) return null
 
     if (!isOpen) {
         return (
@@ -304,10 +308,17 @@ export function LuffyChatbot() {
                 <form 
                     className="flex items-end gap-2"
                     onSubmit={handleSubmit}
+                    autoComplete="off"
                 >
+                    {/* Hack to prevent browser autofill */}
+                    <input type="text" name="email" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+                    <input type="password" name="password" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
                     <div className="flex-1 relative">
                         <Input
                             ref={inputRef}
+                            name="luffy-chat-message"
+                            id="luffy-chat-message"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             // onKeyDown handled by Input by default for Enter, but form handles submit
@@ -315,8 +326,8 @@ export function LuffyChatbot() {
                             className="pr-10 bg-secondary/50 border-border/50 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
                             disabled={isLoading}
                             autoComplete="off"
-                            autoCorrect="off"
-                            spellCheck="false"
+                            data-form-type="other"
+                            data-lpignore="true"
                         />
                         <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                     </div>

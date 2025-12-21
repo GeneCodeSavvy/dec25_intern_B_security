@@ -90,8 +90,10 @@ export function LuffyChatbot() {
                 const res = await fetch("/api/luffy")
                 if (res.ok) {
                     const data = await res.json()
-                    setThreatSummary(data.threatSummary)
-                    setHasAlert(data.threatSummary.recentThreats > 0)
+                    if (data.threatSummary) {
+                        setThreatSummary(data.threatSummary)
+                        setHasAlert(data.threatSummary.recentThreats > 0)
+                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch Luffy status:", error)

@@ -52,7 +52,10 @@ async def sync_emails(
     """
     try:
         # Fetch emails in a threadpool (Gmail SDK is blocking)
-        gmail_emails = await run_in_threadpool(fetch_gmail_messages, x_google_token, 20)
+        gmail_emails = await asyncio.wait_for(
+            run_in_threadpool(fetch_gmail_messages, x_google_token, 20),
+            timeout=30.0  # 30 second timeout
+        )
 
         count = 0
         new_email_ids: list[str] = []

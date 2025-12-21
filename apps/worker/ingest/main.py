@@ -2,7 +2,7 @@ import os
 import base64
 import json
 import logging
-import requests
+import httpx
 import re
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, Request, HTTPException
@@ -223,9 +223,9 @@ def process_gmail_event(email_address: str, history_id: int) -> List[StructuredE
 
     return payloads
 
-def forward_to_decision_agent(payload: StructuredEmailPayload, trace_context: Optional[str] = None):
+async def forward_to_decision_agent(payload: StructuredEmailPayload, trace_context: Optional[str] = None):
     """
-    Forwards the structured payload to the Decision Agent.
+    Forwards the structured payload to the Decision Agent using async HTTP.
     """
     headers = {}
     if trace_context:
@@ -233,17 +233,20 @@ def forward_to_decision_agent(payload: StructuredEmailPayload, trace_context: Op
 
     try:
         logger.info("Forwarding payload to Decision Agent", extra={"url": DECISION_AGENT_URL, "message_id": payload.message_id, "trace_context": trace_context})
-        response = requests.post(
-            DECISION_AGENT_URL,
-            json=payload.model_dump(),
-            headers=headers,
-            timeout=5 
-        )
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                DECISION_AGENT_URL,
+                json=payload.model_dump(),
+                headers=headers,
+            )
+            response.raise_for_status()
         logger.info("Successfully forwarded to Decision Agent", extra={"status_code": response.status_code, "trace_context": trace_context})
-    except requests.exceptions.RequestException as e:
+    except httpx.HTTPStatusError as e:
         logger.error(f"Failed to forward msg {payload.message_id}: {e}", extra={"error": str(e), "trace_context": trace_context})
-        raise # Raise so caller knows this specific one failed (for metrics) but caller handles try/except
+        raise
+    except httpx.RequestError as e:
+        logger.error(f"Failed to forward msg {payload.message_id}: {e}", extra={"error": str(e), "trace_context": trace_context})
+        raise
 
 
 # --- Endpoints ---
@@ -287,7 +290,7 @@ async def receive_pubsub_push(body: PubSubBody, request: Request):
         results = []
         for payload in structured_payloads:
             try:
-                forward_to_decision_agent(payload, trace_context=trace_context)
+                await forward_to_decision_agent(payload, trace_context=trace_context)
                 results.append({"msg_id": payload.message_id, "status": "success"})
             except Exception:
                 # Log error but CONTINUE the loop

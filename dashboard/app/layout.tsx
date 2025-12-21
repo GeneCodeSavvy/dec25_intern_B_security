@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { SessionProvider } from "next-auth/react"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { LuffyChatbot } from "@/components/luffy-chatbot"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -41,6 +42,7 @@ export default function RootLayout({
       <html lang="en" className="dark">
         <body className={`font-sans antialiased`}>
           {children}
+          <LuffyChatbot />
           <Analytics />
         </body>
       </html>

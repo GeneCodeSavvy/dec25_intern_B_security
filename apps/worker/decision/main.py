@@ -33,6 +33,10 @@ logger.addHandler(logHandler)
 logger.setLevel(logging.INFO)
 
 # --- State (Phase 2A: In-memory Idempotency) ---
+# TODO: For production, replace with Redis/DB-backed deduplication:
+# - Survives restarts
+# - Works across replicas
+# - Has TTL to prevent unbounded growth
 seen_messages: Set[str] = set()
 
 # --- Models ---

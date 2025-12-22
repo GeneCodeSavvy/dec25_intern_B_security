@@ -207,7 +207,7 @@ async def process_email(session: AsyncSession, email: EmailEvent) -> None:
         email.intent = final_intent.value if final_intent else None
         email.intent_confidence = final_confidence
         email.intent_indicators = final_indicators
-        email.intent_processed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        email.intent_processed_at = datetime.now(timezone.utc)
 
         # Define base risk scores for intents
         RISK_MAPPING = {
@@ -311,7 +311,16 @@ async def run_loop() -> None:
                     print(f"Processing message {message_id} (Email ID: {email_id_str})")
 
                     processed_successfully = False
-                    async for session in get_session():
+                    # Use async context manager for session to avoid leaks and handle errors better
+                    from contextlib import asynccontextmanager
+
+                    @asynccontextmanager
+                    async def session_scope():
+                        async for s in get_session():
+                            yield s
+                            break
+
+                    async with session_scope() as session:
                         try:
                             query = select(EmailEvent).where(
                                 EmailEvent.id == email_id_str
@@ -321,14 +330,17 @@ async def run_loop() -> None:
 
                             if not email:
                                 print(f"Email {email_id_str} not found.")
-                                break
+                                # Acknowledge message if email is not found to prevent redelivery
+                                await redis.xack(
+                                    EMAIL_INTENT_QUEUE, group_name, message_id
+                                )
+                                continue
 
                             processed_successfully = await process_email(
                                 session, email, payload_subject, payload_body
                             )
                         except Exception as inner_e:
                             print(f"Error processing {email_id_str}: {inner_e}")
-                        break
 
                     if processed_successfully:
                         await redis.xack(EMAIL_INTENT_QUEUE, group_name, message_id)

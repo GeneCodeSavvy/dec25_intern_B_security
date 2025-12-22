@@ -65,8 +65,8 @@ async def sync_emails(
         )
 
         count = 0
-        new_email_ids: list[str] = []
-        # Push to analysis queue
+        redis_payloads = []
+        # Push to email intent queue
         redis = await get_redis_client()
 
         for email in gmail_emails:
@@ -100,16 +100,14 @@ async def sync_emails(
             )
 
             session.add(email_event)
-            new_email_ids.append(str(new_id))
             count += 1
 
-            await redis.xadd(
-                EMAIL_INTENT_QUEUE,
+            redis_payloads.append(
                 {
                     "email_id": str(new_id),
                     "subject": email.subject or "",
                     "body": email.body_text or email.body_html or "",
-                },
+                }
             )
 
         if count > 0:

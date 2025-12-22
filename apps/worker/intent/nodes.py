@@ -1,5 +1,5 @@
 import os
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from .schemas import EmailIntentState, IntentAnalysis
 from .prompts import SYSTEM_PROMPT, SUBJECT_PROMPT, BODY_PROMPT
@@ -7,7 +7,11 @@ from .taxonomy import Intent
 
 
 def get_model():
-    return ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    return ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        temperature=0,
+        google_api_key=os.environ.get("GOOGLE_API_KEY"),
+    )
 
 
 async def analyze_subject(state: EmailIntentState) -> dict:

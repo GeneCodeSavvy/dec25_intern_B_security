@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import random
-import os
 import uuid
 import logging
-from typing import Optional
 from datetime import datetime, timezone
-import json
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -102,7 +99,7 @@ async def run_loop() -> None:
             if not streams:
                 continue
 
-            for stream_name, messages in streams:
+            for _, messages in streams:
                 for message_id, payload in messages:
                     email_id_str = payload.get('email_id')
 

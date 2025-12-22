@@ -273,48 +273,24 @@ async def process_email_analysis(
     email: EmailEvent,
     payload: dict,
 ) -> bool:
-    """Process a single email event through the analysis agent."""
+    """
+    Processes an email by routing it to the appropriate sandbox and updating the database.
+    """
     try:
-        logger.info(f"Starting sandbox analysis for email {email.id}")
+        logger.info(f"Starting analysis for email {email.id}")
 
-        # --- Phase 1: Attachment Fetching ---
-        attachments = [
-            AttachmentMetadata.model_validate_json(att)
-            for att in payload.get("attachment_metadata", [])
-        ]
-        message_id = payload.get("message_id")
-        fetched_attachments = {}
-
-        if message_id:
-            for att in attachments:
-                if att.attachment_id:
-                    try:
-                        attachment_bytes = await fetch_attachment_async(
-                            message_id, att.attachment_id
-                        )
-                        if attachment_bytes:
-                            fetched_attachments[att.filename] = len(attachment_bytes)
-                            logger.info(
-                                f"Successfully fetched {att.filename}: {len(attachment_bytes)} bytes"
-                            )
-                        else:
-                            logger.warning(
-                                f"Failed to fetch attachment {att.filename} for message {message_id}"
-                            )
-                    except Exception as e:
-                        logger.error(f"Error fetching attachment {att.filename}: {e}")
-
-        # --- Mock Sandbox Logic (Phase 2 will replace this) ---
-        await asyncio.sleep(2)  # Simulate analysis time
-
-        sandbox_result = {
-            "verdict": "clean",
-            "score": 10,
-            "details": "Simulated scan. Attachment fetch testing complete.",
-            "urls_scanned": payload.get("extracted_urls", []),
-            "attachments_scanned": [att.filename for att in attachments],
-            "attachments_fetched": fetched_attachments,
-        }
+        sandbox_result = None
+        if USE_REAL_SANDBOX:
+            logger.info(f"Using REAL sandbox (Hybrid Analysis) for email {email.id}")
+            sandbox_result = await hybrid_analysis_scan(str(email.id), payload)
+        else:
+            logger.info(f"Using MOCK sandbox for email {email.id}")
+            await asyncio.sleep(2)  # Simulate analysis time
+            sandbox_result = {
+                "verdict": "clean",
+                "score": 0,
+                "details": "Mock sandbox scan complete. No real analysis performed.",
+            }
 
         email.sandbox_result = sandbox_result
         email.status = EmailStatus.COMPLETED
@@ -323,17 +299,24 @@ async def process_email_analysis(
         session.add(email)
         await session.commit()
         await session.refresh(email)
-        logger.info(f"Sandbox analysis completed for email {email.id}")
+
+        logger.info(
+            f"Analysis for {email.id} completed. Verdict: {sandbox_result.get('verdict')}"
+        )
         return True
 
     except Exception as e:
-        logger.error(f"Error in process_email_analysis: {e}")
+        logger.error(
+            f"Error in process_email_analysis for {email.id}: {e}", exc_info=True
+        )
         try:
             email.status = EmailStatus.FAILED
             session.add(email)
             await session.commit()
         except Exception as commit_err:
-            logger.error(f"Failed to persist FAILED status: {commit_err}")
+            logger.error(
+                f"Failed to persist FAILED status for {email.id}: {commit_err}"
+            )
         return False
 
 

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from pythonjsonlogger import json as jsonlogger
 
 from packages.shared.database import get_session, init_db
 from packages.shared.constants import EmailStatus, RiskTier
@@ -187,7 +188,6 @@ async def process_email(session: AsyncSession, email: EmailEvent) -> None:
     await session.refresh(email)
 
     try:
-        from datetime import datetime, timezone
         from .graph import intent_agent
         from .schemas import EmailIntentState
 
@@ -208,25 +208,6 @@ async def process_email(session: AsyncSession, email: EmailEvent) -> None:
         email.intent_confidence = final_confidence
         email.intent_indicators = final_indicators
         email.intent_processed_at = datetime.now(timezone.utc)
-
-        # Define base risk scores for intents
-        RISK_MAPPING = {
-            Intent.PHISHING: 95,
-            Intent.MALWARE: 100,
-            Intent.BEC_FRAUD: 90,
-            Intent.SOCIAL_ENGINEERING: 85,
-            Intent.RECONNAISSANCE: 70,
-            Intent.SPAM: 40,
-            Intent.SALES: 20,
-            Intent.INVOICE: 10,
-            Intent.PAYMENT: 10,
-            Intent.MEETING_REQUEST: 5,
-            Intent.TASK_REQUEST: 15,
-            Intent.FOLLOW_UP: 5,
-            Intent.PERSONAL: 0,
-            Intent.NEWSLETTER: 5,
-            Intent.UNKNOWN: 30,
-        }
 
         # Use the Enum object for logic lookup
         if final_intent and final_intent in RISK_MAPPING:
@@ -254,13 +235,13 @@ async def process_email(session: AsyncSession, email: EmailEvent) -> None:
         email.analysis_result = {"error": "processing_failed"}
 
     except Exception as e:
-        print(f"Error in process_email: {e}")
+        logger.error(f"Error in process_email: {e}")
         try:
             email.status = EmailStatus.FAILED
             session.add(email)
             await session.commit()
         except Exception as commit_err:
-            print(f"Failed to persist FAILED status: {commit_err}")
+            logger.error(f"Failed to persist FAILED status: {commit_err}")
         return False
 
 
@@ -275,12 +256,12 @@ async def run_loop() -> None:
     # Create consumer group if it doesn't exist
     try:
         await redis.xgroup_create(EMAIL_INTENT_QUEUE, group_name, id="0", mkstream=True)
-        print(f"Consumer group {group_name} created.")
+        logger.info(f"Consumer group {group_name} created.")
     except Exception as e:
         if "BUSYGROUP" not in str(e):
-            print(f"Error creating consumer group: {e}")
+            logger.warning(f"Error creating consumer group: {e}")
 
-    print(f"Worker {consumer_name} started. Listening on {EMAIL_INTENT_QUEUE}...")
+    logger.info(f"Worker {consumer_name} started. Listening on {EMAIL_INTENT_QUEUE}...")
 
     while True:
         try:
@@ -304,11 +285,13 @@ async def run_loop() -> None:
                     payload_body = payload.get("body")
 
                     if not email_id_str:
-                        print(f"Invalid payload in message {message_id}")
+                        logger.warning(f"Invalid payload in message {message_id}")
                         await redis.xack(EMAIL_INTENT_QUEUE, group_name, message_id)
                         continue
 
-                    print(f"Processing message {message_id} (Email ID: {email_id_str})")
+                    logger.info(
+                        f"Processing message {message_id} (Email ID: {email_id_str})"
+                    )
 
                     processed_successfully = False
                     # Use async context manager for session to avoid leaks and handle errors better
@@ -329,7 +312,7 @@ async def run_loop() -> None:
                             email = result.first()
 
                             if not email:
-                                print(f"Email {email_id_str} not found.")
+                                logger.warning(f"Email {email_id_str} not found.")
                                 # Acknowledge message if email is not found to prevent redelivery
                                 await redis.xack(
                                     EMAIL_INTENT_QUEUE, group_name, message_id
@@ -340,14 +323,14 @@ async def run_loop() -> None:
                                 session, email, payload_subject, payload_body
                             )
                         except Exception as inner_e:
-                            print(f"Error processing {email_id_str}: {inner_e}")
+                            logger.error(f"Error processing {email_id_str}: {inner_e}")
 
                     if processed_successfully:
                         await redis.xack(EMAIL_INTENT_QUEUE, group_name, message_id)
-                        print(f"Acknowledged message {message_id}")
+                        logger.info(f"Acknowledged message {message_id}")
 
         except Exception as e:
-            print(f"Worker loop error: {e}")
+            logger.error(f"Worker loop error: {e}")
             await asyncio.sleep(1)
 
 

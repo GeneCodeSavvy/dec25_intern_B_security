@@ -7,10 +7,14 @@ from .taxonomy import Intent
 
 
 def get_model():
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError("GOOGLE_API_KEY environment variable is missing or empty.")
+
     return ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
         temperature=0,
-        google_api_key=os.environ.get("GOOGLE_API_KEY"),
+        google_api_key=api_key,
     )
 
 

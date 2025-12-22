@@ -150,13 +150,16 @@ class GmailService:
         self.timeout = timeout
         self.trace_context = trace_context
 
+        # Set socket timeout globally for httplib2
+        socket.setdefaulttimeout(self.timeout)
+
         # Build the Gmail API service
-        http = httplib2.Http(timeout=self.timeout)
+        # Note: credentials and http are mutually exclusive in build()
         if credentials:
-            self.service = build("gmail", "v1", credentials=credentials, http=http)
+            self.service = build("gmail", "v1", credentials=credentials)
         elif access_token:
             creds = Credentials(token=access_token)
-            self.service = build("gmail", "v1", credentials=creds, http=http)
+            self.service = build("gmail", "v1", credentials=creds)
         else:
             raise ValueError("Either access_token or credentials must be provided")
 
@@ -435,9 +438,11 @@ class GmailWatchService:
         self.project_id = project_id
         self.trace_context = trace_context
 
-        http = httplib2.Http(timeout=timeout)
+        # Set socket timeout globally
+        socket.setdefaulttimeout(timeout)
+
         creds = Credentials(token=access_token)
-        self.service = build("gmail", "v1", credentials=creds, http=http)
+        self.service = build("gmail", "v1", credentials=creds)
 
         logger.info(
             "GmailWatchService initialized",

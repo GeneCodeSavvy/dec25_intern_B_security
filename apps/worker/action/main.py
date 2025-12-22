@@ -97,13 +97,46 @@ class ActionResult(BaseModel):
 
 
 # --- Gmail Service ---
-def get_gmail_service():
+async def get_gmail_service_for_user(user_email: str):
     """
-    Builds and returns the Gmail API service using ADC.
+    Builds and returns the Gmail API service using the user's OAuth token from database.
     Note: Action Agent needs gmail.modify scope (not just readonly).
     """
-    creds, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/gmail.modify'])
-    return build('gmail', 'v1', credentials=creds)
+    from google.oauth2.credentials import Credentials
+    from sqlmodel import select
+    from packages.shared.database import get_session
+    from packages.shared.models import User
+    
+    # Get user's access token from database
+    async for session in get_session():
+        try:
+            query = select(User).where(User.email == user_email)
+            result = await session.exec(query)
+            user = result.first()
+            
+            if not user or not user.access_token:
+                logger.error(f"No access token found for user {user_email}")
+                return None
+            
+            # Create credentials from access token
+            creds = Credentials(token=user.access_token)
+            return build('gmail', 'v1', credentials=creds)
+        finally:
+            break  # Exit the async context
+
+def get_gmail_service():
+    """
+    Legacy function kept for compatibility.
+    Falls back to ADC if available, but logs a warning.
+    """
+    logger.warning("Using ADC for Gmail service - this won't work for personal Gmail!")
+    try:
+        creds, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/gmail.modify'])
+        return build('gmail', 'v1', credentials=creds)
+    except Exception as e:
+        logger.error(f"ADC authentication failed: {e}")
+        return None
+
 
 
 # --- Core Processing Logic ---

@@ -1,5 +1,8 @@
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import Optional
+
+from packages.shared.constants import EmailStatus
 
 
 class AttachmentMetadata(BaseModel):

@@ -75,7 +75,7 @@ class EmailEvent(SQLModel, table=True):
         default=EmailStatus.PROCESSING,
         sa_column=Column(
             Enum(EmailStatus, name="email_status_enum", create_type=False),
-            server_default="PENDING",
+            server_default="PROCESSING",
         ),
     )
     risk_score: Optional[int] = Field(default=None)  # 0-100

@@ -1,7 +1,15 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { Shield, Mail, Search, Zap, Lock, Bot, CheckCircle, AlertTriangle, XCircle } from "lucide-react"
+import gsap from "gsap"
+import { ScrollToPlugin } from "gsap/ScrollToPlugin"
+
+// Register GSAP plugin
+if (typeof window !== "undefined") {
+    gsap.registerPlugin(ScrollToPlugin)
+}
 
 // Hand-drawn style shield icon (Notion mascot style)
 function ShieldIcon() {
@@ -117,6 +125,31 @@ const mockEmails = [
 ]
 
 export function LandingPage() {
+    // GSAP smooth scroll for anchor links
+    useEffect(() => {
+        const handleAnchorClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            const anchor = target.closest('a[href^="#"]')
+            if (anchor) {
+                e.preventDefault()
+                const targetId = anchor.getAttribute('href')
+                if (targetId && targetId !== '#') {
+                    const targetElement = document.querySelector(targetId)
+                    if (targetElement) {
+                        gsap.to(window, {
+                            duration: 1,
+                            scrollTo: { y: targetElement, offsetY: 80 },
+                            ease: "power3.inOut"
+                        })
+                    }
+                }
+            }
+        }
+
+        document.addEventListener('click', handleAnchorClick)
+        return () => document.removeEventListener('click', handleAnchorClick)
+    }, [])
+
     return (
         <div className="landing">
             {/* Navigation */}
@@ -260,51 +293,6 @@ export function LandingPage() {
                                     ))}
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Floating Annotations - Positioned at edges of mockup */}
-                    {/* SPF Verified - Top right edge */}
-                    <div className="absolute -right-36 top-24 hidden xl:flex items-center animate-float">
-                        <div className="w-12 h-px bg-gradient-to-r from-gray-300 to-gray-100"></div>
-                        <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
-                            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                                <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                            </div>
-                            <span className="text-sm font-medium text-gray-800">SPF Verified</span>
-                        </div>
-                    </div>
-
-                    {/* Sandbox Active - Left edge */}
-                    <div className="absolute -left-40 top-20 hidden xl:flex items-center animate-float" style={{ animationDelay: '1s' }}>
-                        <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
-                            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                                <Lock className="h-3.5 w-3.5 text-blue-600" />
-                            </div>
-                            <span className="text-sm font-medium text-gray-800">Sandbox Active</span>
-                        </div>
-                        <div className="w-12 h-px bg-gradient-to-l from-gray-300 to-gray-100"></div>
-                    </div>
-
-                    {/* AI Scanning - Right edge, middle */}
-                    <div className="absolute -right-32 top-1/2 hidden xl:flex items-center animate-float" style={{ animationDelay: '0.5s' }}>
-                        <div className="w-12 h-px bg-gradient-to-r from-gray-300 to-gray-100"></div>
-                        <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
-                            <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
-                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                            </div>
-                            <span className="text-sm font-medium text-gray-800">AI Scanning</span>
-                        </div>
-                    </div>
-
-                    {/* DKIM Pass - Bottom right edge */}
-                    <div className="absolute -right-28 bottom-16 hidden xl:flex items-center animate-float" style={{ animationDelay: '1.5s' }}>
-                        <div className="w-8 h-px bg-gradient-to-r from-gray-300 to-gray-100"></div>
-                        <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
-                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                            </div>
-                            <span className="text-sm font-medium text-gray-800">DKIM Pass</span>
                         </div>
                     </div>
                 </div>

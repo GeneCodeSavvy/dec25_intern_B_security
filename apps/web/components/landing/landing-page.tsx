@@ -263,10 +263,10 @@ export function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Floating Annotations - Improved positioning and styling */}
-                    {/* SPF Verified - Top right, connected to first email */}
-                    <div className="absolute right-0 top-16 hidden lg:flex items-center animate-float">
-                        <div className="w-8 h-px bg-gray-200"></div>
+                    {/* Floating Annotations - Positioned at edges of mockup */}
+                    {/* SPF Verified - Top right edge */}
+                    <div className="absolute -right-36 top-24 hidden xl:flex items-center animate-float">
+                        <div className="w-12 h-px bg-gradient-to-r from-gray-300 to-gray-100"></div>
                         <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
                             <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
                                 <CheckCircle className="h-3.5 w-3.5 text-green-600" />
@@ -275,20 +275,20 @@ export function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Sandbox Active - Left side, near sidebar */}
-                    <div className="absolute -left-2 top-32 hidden lg:flex items-center animate-float" style={{ animationDelay: '1s' }}>
+                    {/* Sandbox Active - Left edge */}
+                    <div className="absolute -left-40 top-20 hidden xl:flex items-center animate-float" style={{ animationDelay: '1s' }}>
                         <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
                             <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
                                 <Lock className="h-3.5 w-3.5 text-blue-600" />
                             </div>
                             <span className="text-sm font-medium text-gray-800">Sandbox Active</span>
                         </div>
-                        <div className="w-8 h-px bg-gray-200"></div>
+                        <div className="w-12 h-px bg-gradient-to-l from-gray-300 to-gray-100"></div>
                     </div>
 
-                    {/* AI Scanning - Right side, mid-section */}
-                    <div className="absolute right-0 top-48 hidden lg:flex items-center animate-float" style={{ animationDelay: '0.5s' }}>
-                        <div className="w-8 h-px bg-gray-200"></div>
+                    {/* AI Scanning - Right edge, middle */}
+                    <div className="absolute -right-32 top-1/2 hidden xl:flex items-center animate-float" style={{ animationDelay: '0.5s' }}>
+                        <div className="w-12 h-px bg-gradient-to-r from-gray-300 to-gray-100"></div>
                         <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
                             <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
                                 <Zap className="h-3.5 w-3.5 text-purple-600" />
@@ -297,9 +297,9 @@ export function LandingPage() {
                         </div>
                     </div>
 
-                    {/* DKIM Verified - Bottom right */}
-                    <div className="absolute right-4 bottom-8 hidden lg:flex items-center animate-float" style={{ animationDelay: '1.5s' }}>
-                        <div className="w-6 h-px bg-gray-200"></div>
+                    {/* DKIM Pass - Bottom right edge */}
+                    <div className="absolute -right-28 bottom-16 hidden xl:flex items-center animate-float" style={{ animationDelay: '1.5s' }}>
+                        <div className="w-8 h-px bg-gradient-to-r from-gray-300 to-gray-100"></div>
                         <div className="floating-annotation-enhanced flex items-center gap-2 shadow-lg">
                             <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
                                 <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />

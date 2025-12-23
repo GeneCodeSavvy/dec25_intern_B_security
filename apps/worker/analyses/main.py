@@ -8,6 +8,9 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 
 import google.auth
 import httpx
@@ -372,7 +375,7 @@ async def run_loop() -> None:
                     )
 
                     processed_successfully = False
-                    from contextlib import asynccontextmanager
+                    # yield session scope
 
                     @asynccontextmanager
                     async def session_scope():
@@ -408,10 +411,38 @@ async def run_loop() -> None:
             await asyncio.sleep(1)
 
 
+# Create lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager to start background tasks."""
+    # Startup
+    task = asyncio.create_task(run_loop())
+    logger.info("Analysis worker background task started")
+    yield
+    # Shutdown
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/")
+async def health_check():
+    """Health check endpoint for Cloud Run."""
+    return {"status": "ok", "service": "analyses-worker"}
+
+
 def main() -> None:
     """Entry point for the worker service."""
-    logger.info("Starting analysis worker...")
-    asyncio.run(run_loop())
+    port = int(os.getenv("PORT", "8080"))
+    # Run uvicorn server
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

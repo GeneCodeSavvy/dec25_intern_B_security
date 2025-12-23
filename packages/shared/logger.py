@@ -64,10 +64,10 @@ def setup_logging(
         # Add service name to all records via filter
         handler.addFilter(ServiceContextFilter(service_name))
     else:
-        # Text formatter with consistent structure
+        # Text formatter with severity-first format
         formatter = logging.Formatter(
-            fmt=f"%(asctime)s - [{service_name}] - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+            fmt=f"%(levelname)s: [%(asctime)s] [{service_name}] %(message)s",
+            datefmt="%H:%M:%S",
         )
     
     handler.setFormatter(formatter)

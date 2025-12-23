@@ -43,12 +43,12 @@ const translations = {
             headline: "Everything you need to stay protected",
             subheadline: "Powerful security features, beautifully simple",
             items: [
-                { icon: Zap, title: "AI Threat Detection", description: "Real-time analysis of every email using advanced machine learning models." },
-                { icon: Shield, title: "Risk Scoring", description: "0-100 score with color-coded threat levels: Safe, Cautious, or Threat." },
-                { icon: Lock, title: "SPF/DKIM/DMARC", description: "Automatic verification of sender authenticity and email integrity." },
-                { icon: Search, title: "URL Sandbox", description: "Links and attachments analyzed in isolation before you interact." },
-                { icon: Mail, title: "Gmail Integration", description: "One-click sync with your Gmail account. Setup takes under a minute." },
-                { icon: Bot, title: "AI Assistant", description: "Ask questions about email security and get instant, expert answers." },
+                { icon: Zap, title: "AI Threat Detection", description: "Real-time analysis of every email using advanced machine learning models.", showPills: false },
+                { icon: Shield, title: "Risk Scoring", description: "0-100 score with color-coded threat levels: Safe, Cautious, or Threat.", showPills: true },
+                { icon: Lock, title: "SPF/DKIM/DMARC", description: "Automatic verification of sender authenticity and email integrity.", showPills: false },
+                { icon: Search, title: "URL Sandbox", description: "Links and attachments analyzed in isolation before you interact.", showPills: false },
+                { icon: Mail, title: "Gmail Integration", description: "One-click sync with your Gmail account. Setup takes under a minute.", showPills: false },
+                { icon: Bot, title: "AI Assistant", description: "Ask questions about email security and get instant, expert answers.", showPills: false },
             ],
         },
         cta: {
@@ -103,12 +103,12 @@ const translations = {
             headline: "保護に必要なすべてが揃っています",
             subheadline: "強力なセキュリティ機能をシンプルに",
             items: [
-                { icon: Zap, title: "AI脅威検出", description: "高度な機械学習モデルを使用して、すべてのメールをリアルタイムで分析します。" },
-                { icon: Shield, title: "リスクスコアリング", description: "0-100のスコアと色分けされた脅威レベル：安全、注意、脅威。" },
-                { icon: Lock, title: "SPF/DKIM/DMARC", description: "送信者の信頼性とメールの整合性を自動検証します。" },
-                { icon: Search, title: "URLサンドボックス", description: "リンクと添付ファイルを操作前に隔離環境で分析します。" },
-                { icon: Mail, title: "Gmail連携", description: "ワンクリックでGmailアカウントと同期。設定は1分以内で完了。" },
-                { icon: Bot, title: "AIアシスタント", description: "メールセキュリティについて質問すると、即座に専門的な回答を得られます。" },
+                { icon: Zap, title: "AI脅威検出", description: "高度な機械学習モデルを使用して、すべてのメールをリアルタイムで分析します。", showPills: false },
+                { icon: Shield, title: "リスクスコアリング", description: "0-100のスコアと色分けされた脅威レベル：安全、注意、脅威。", showPills: true },
+                { icon: Lock, title: "SPF/DKIM/DMARC", description: "送信者の信頼性とメールの整合性を自動検証します。", showPills: false },
+                { icon: Search, title: "URLサンドボックス", description: "リンクと添付ファイルを操作前に隔離環境で分析します。", showPills: false },
+                { icon: Mail, title: "Gmail連携", description: "ワンクリックでGmailアカウントと同期。設定は1分以内で完了。", showPills: false },
+                { icon: Bot, title: "AIアシスタント", description: "メールセキュリティについて質問すると、即座に専門的な回答を得られます。", showPills: false },
             ],
         },
         cta: {
@@ -137,11 +137,11 @@ const translations = {
 
 // Email mockup data
 const mockEmails = [
-    { sender: "Andrew, Jason", subject: "Q4 Report Review", subjectJa: "Q4レポートレビュー", risk: "safe", score: 12 },
-    { sender: "support@definitely-not-paypal.com", subject: "Verify your account now", subjectJa: "今すぐアカウントを確認", risk: "threat", score: 87 },
-    { sender: "Jenny Williams", subject: "Meeting tomorrow?", subjectJa: "明日の会議は？", risk: "safe", score: 8 },
-    { sender: "notifications@dropbox.com", subject: "Someone shared a file", subjectJa: "ファイルが共有されました", risk: "cautious", score: 45 },
-    { sender: "IT Department", subject: "Password reset required", subjectJa: "パスワードリセットが必要です", risk: "threat", score: 92 },
+    { id: "email-1", sender: "Andrew, Jason", subject: "Q4 Report Review", subjectJa: "Q4レポートレビュー", risk: "safe", score: 12 },
+    { id: "email-2", sender: "support@definitely-not-paypal.com", subject: "Verify your account now", subjectJa: "今すぐアカウントを確認", risk: "threat", score: 87 },
+    { id: "email-3", sender: "Jenny Williams", subject: "Meeting tomorrow?", subjectJa: "明日の会議は？", risk: "safe", score: 8 },
+    { id: "email-4", sender: "notifications@dropbox.com", subject: "Someone shared a file", subjectJa: "ファイルが共有されました", risk: "cautious", score: 45 },
+    { id: "email-5", sender: "IT Department", subject: "Password reset required", subjectJa: "パスワードリセットが必要です", risk: "threat", score: 92 },
 ]
 
 type Language = "en" | "ja"
@@ -320,9 +320,9 @@ export function LandingPage() {
                                     <span className="feature-badge">{t.mockup.aiProtected}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    {mockEmails.map((email, index) => (
+                                    {mockEmails.map((email) => (
                                         <div
-                                            key={index}
+                                            key={email.id}
                                             className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-gray-50 transition-colors"
                                         >
                                             <div className="flex-1 min-w-0">
@@ -361,8 +361,8 @@ export function LandingPage() {
 
                     {/* Masonry Grid */}
                     <div className="columns-1 md:columns-2 lg:columns-3 gap-5 space-y-5">
-                        {t.testimonials.items.map((testimonial: { name: string; handle: string; content: string; avatar: string }, index: number) => (
-                            <div key={index} className="testimonial-card break-inside-avoid group">
+                        {t.testimonials.items.map((testimonial: { name: string; handle: string; content: string; avatar: string }) => (
+                            <div key={testimonial.handle} className="testimonial-card break-inside-avoid group">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-sm font-semibold text-gray-700">
@@ -394,8 +394,8 @@ export function LandingPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {t.features.items.map((feature: { icon: React.ElementType; title: string; description: string }, index: number) => (
-                            <div key={index} className="feature-card">
+                        {t.features.items.map((feature: { icon: React.ElementType; title: string; description: string; showPills: boolean }) => (
+                            <div key={feature.title} className="feature-card">
                                 <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
                                     <feature.icon className="h-5 w-5 text-gray-700" />
                                 </div>
@@ -403,7 +403,7 @@ export function LandingPage() {
                                 <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
 
                                 {/* Feature-specific UI snippet */}
-                                {(feature.title === "Risk Scoring" || feature.title === "リスクスコアリング") && (
+                                {feature.showPills && (
                                     <div className="mt-4 flex gap-2">
                                         <span className="pill pill-safe text-xs">{t.pills.safe}</span>
                                         <span className="pill pill-cautious text-xs">{t.pills.cautious}</span>

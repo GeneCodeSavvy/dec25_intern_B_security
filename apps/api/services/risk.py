@@ -32,7 +32,7 @@ def evaluate_static_risk(payload: StructuredEmail) -> tuple[bool, str, int]:
 
     # 2. URL Check (Basic heuristics for Phase 2A)
     if len(payload.extracted_urls) > 0:
-        score += 10  # Presence of URLs
+        score += 5  # Presence of URLs
         if len(payload.extracted_urls) > 3:
             score += 20
             reasons.append("Many URLs")

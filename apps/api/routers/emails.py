@@ -41,7 +41,12 @@ def build_email_event(
 ) -> tuple[EmailEvent, list[tuple[str, dict]]]:
     """
     Create EmailEvent and downstream queue payloads.
+    
+    CRITICAL: Control message (JOB_AGGREGATOR_QUEUE) MUST be published FIRST
+    to establish job requirements before workers complete.
     """
+    from datetime import datetime, timezone
+    
     job_id = uuid.uuid4()
     job_id_str = str(job_id)
     downstream_tasks: list[tuple[str, dict]] = []
@@ -62,35 +67,54 @@ def build_email_event(
         status=status,
     )
 
-    # Intent analysis (always)
-    downstream_tasks.append(
-        (
-            EMAIL_INTENT_QUEUE,
-            {
-                'job_id': job_id_str,
-                'subject': email.subject or '',
-                'body': email.body_text or email.body_html or '',
-            },
-        )
-    )
-
-    # Sandbox analysis (conditional)
+    # Evaluate if sandbox analysis is needed
     should_sandbox, _, _ = evaluate_static_risk(email)
     if should_sandbox:
         email_event.sandboxed = True
-        downstream_tasks.append(
-            (
-                EMAIL_ANALYSIS_QUEUE,
-                {
-                    'job_id': job_id_str,
-                    'message_id': email.message_id,
-                    'extracted_urls': json.dumps(email.extracted_urls),
-                    'attachment_metadata': json.dumps([att.model_dump_json() for att in email.attachments]),
-                },
-            )
-        )
+    
+    logger.info(
+        f"Building email event job_id={job_id_str} message_id={email.message_id} "
+        f"requiresB={should_sandbox} sender={email.sender}"
+    )
 
-    downstream_tasks.append((JOB_AGGREGATOR_QUEUE, {'job_id': job_id_str, 'requiresB': should_sandbox}))
+    # CRITICAL: Control stream message FIRST (position 0)
+    # This establishes job requirements before workers complete
+    control_payload = {
+        'job_id': job_id_str,
+        'requiresB': str(should_sandbox),
+        'created_at': email.received_at.isoformat() if email.received_at else datetime.now(timezone.utc).isoformat(),
+    }
+    downstream_tasks.append((JOB_AGGREGATOR_QUEUE, control_payload))
+    logger.debug(f"Job {job_id_str}: Added control message with requiresB={should_sandbox}")
+
+    # Intent analysis (always runs)
+    # FIXED: Changed 'job_id' to 'email_id' to match worker expectations
+    intent_payload = {
+        'email_id': job_id_str,  # Worker expects 'email_id', not 'job_id'
+        'subject': email.subject or '',
+        'body': email.body_text or email.body_html or '',
+    }
+    downstream_tasks.append((EMAIL_INTENT_QUEUE, intent_payload))
+    logger.debug(f"Job {job_id_str}: Added intent analysis task")
+
+    # Sandbox analysis (conditional)
+    if should_sandbox:
+        # FIXED: Changed 'job_id' to 'email_id' to match worker expectations
+        sandbox_payload = {
+            'email_id': job_id_str,  # Worker expects 'email_id', not 'job_id'
+            'message_id': email.message_id,
+            'extracted_urls': json.dumps(email.extracted_urls),
+            'attachment_metadata': json.dumps([att.model_dump_json() for att in email.attachments]),
+        }
+        downstream_tasks.append((EMAIL_ANALYSIS_QUEUE, sandbox_payload))
+        logger.debug(f"Job {job_id_str}: Added sandbox analysis task (risk evaluation triggered)")
+    else:
+        logger.debug(f"Job {job_id_str}: Skipping sandbox analysis (low risk)")
+
+    logger.info(
+        f"Job {job_id_str}: Created {len(downstream_tasks)} downstream tasks "
+        f"(control + intent + {'sandbox' if should_sandbox else 'no-sandbox'})"
+    )
 
     return email_event, downstream_tasks
 

@@ -182,7 +182,9 @@ async def list_emails(
 ) -> list[EmailEvent]:
     """List emails for the current user."""
     query = (
-        select(EmailEvent).where(EmailEvent.user_id == user.id).order_by(EmailEvent.created_at.desc())  # type: ignore
+        select(EmailEvent)
+        .where(EmailEvent.user_id == user.id)
+        .order_by(EmailEvent.received_at.desc())  # type: ignore
     )
     if status_filter:
         query = query.where(EmailEvent.status == status_filter)

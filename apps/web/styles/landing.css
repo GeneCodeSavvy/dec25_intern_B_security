@@ -18,10 +18,8 @@
   /* Feature badge */
   --badge-bg: #F3F4F6;
   --badge-text: #374151;
-}
 
-/* Landing page base */
-.landing {
+  /* Base styles */
   background-color: var(--landing-bg);
   color: var(--landing-text);
   min-height: 100vh;

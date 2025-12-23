@@ -4,7 +4,7 @@ import * as React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useSession } from "next-auth/react"
-import { AlertTriangle, CheckCircle, Paperclip, Search, XCircle, RefreshCw } from "lucide-react"
+import { AlertTriangle, CheckCircle, Search, XCircle, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,12 +66,12 @@ export function EmailsPage() {
       if (session?.idToken && lastTokenRef.current === session.idToken) {
         return
       }
-      
+
       // Only show loading state if we have no data to avoid flash
       if (emails.length === 0) {
         setLoading(true)
       }
-      
+
       setError(null)
       try {
         if (!session?.idToken) {
@@ -113,7 +113,7 @@ export function EmailsPage() {
   // Manual refresh function
   const handleRefresh = async () => {
     if (!session?.idToken || !session?.accessToken) return
-    
+
     setRefreshing(true)
     try {
       // Clear cache and sync fresh data
@@ -214,8 +214,8 @@ export function EmailsPage() {
                   <SelectItem value="SPAM">Spam</SelectItem>
                 </SelectContent>
               </Select>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={handleRefresh}
                 disabled={refreshing}
@@ -240,7 +240,7 @@ export function EmailsPage() {
                   <TableHead>Threat</TableHead>
                   <TableHead className="text-center">Score</TableHead>
                   <TableHead className="text-center">Auth</TableHead>
-                  <TableHead>Attachments</TableHead>
+
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -294,11 +294,10 @@ export function EmailsPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {email.risk_score !== undefined && email.risk_score !== null ? (
-                        <span className={`text-xs font-medium ${
-                          email.risk_score >= 70 ? "text-red-500" :
+                        <span className={`text-xs font-medium ${email.risk_score >= 70 ? "text-red-500" :
                           email.risk_score >= 40 ? "text-yellow-500" :
-                          "text-green-500"
-                        }`}>
+                            "text-green-500"
+                          }`}>
                           {email.risk_score}
                         </span>
                       ) : (
@@ -321,18 +320,7 @@ export function EmailsPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {email.attachment_info ? (
-                        <div className="flex items-center gap-1" title={email.attachment_info}>
-                          <Paperclip className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground truncate max-w-[80px]">
-                            {email.attachment_info}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
+
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">
                         {email.status}

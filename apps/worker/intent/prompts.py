@@ -1,4 +1,4 @@
-from .taxonomy import Intent
+from apps.worker.intent.taxonomy import Intent
 
 SYSTEM_PROMPT = """You are an expert email analysis agent. 
 Your goal is to accurately classify the primary intent of an email based on its subject and body.

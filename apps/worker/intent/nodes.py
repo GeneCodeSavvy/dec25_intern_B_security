@@ -2,9 +2,9 @@ import logging
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from .schemas import EmailIntentState, IntentAnalysis
-from .prompts import SYSTEM_PROMPT, SUBJECT_PROMPT, BODY_PROMPT
-from .taxonomy import Intent
+from apps.worker.intent.schemas import EmailIntentState, IntentAnalysis
+from apps.worker.intent.prompts import SYSTEM_PROMPT, SUBJECT_PROMPT, BODY_PROMPT
+from apps.worker.intent.taxonomy import Intent
 
 logger = logging.getLogger(__name__)
 

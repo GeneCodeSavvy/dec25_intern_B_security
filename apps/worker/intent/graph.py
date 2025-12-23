@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
-from .schemas import EmailIntentState
-from .nodes import analyze_subject, analyze_body, resolve_intent
+from apps.worker.intent.schemas import EmailIntentState
+from apps.worker.intent.nodes import analyze_subject, analyze_body, resolve_intent
 
 def create_intent_graph():
     workflow = StateGraph(EmailIntentState)

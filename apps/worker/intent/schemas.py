@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, Field
-from .taxonomy import Intent
+from apps.worker.intent.taxonomy import Intent
 
 
 class IntentAnalysis(BaseModel):

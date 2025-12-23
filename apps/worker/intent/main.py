@@ -15,7 +15,7 @@ from packages.shared.constants import EmailStatus, RiskTier
 from packages.shared.models import EmailEvent
 from packages.shared.queue import get_redis_client, EMAIL_INTENT_QUEUE
 from packages.shared.logger import setup_logging
-from .taxonomy import Intent
+from apps.worker.intent.taxonomy import Intent
 
 # Configure logging
 logger = setup_logging("intent-worker")
@@ -191,8 +191,8 @@ async def process_email(session: AsyncSession, email: EmailEvent) -> None:
     await session.refresh(email)
 
     try:
-        from .graph import intent_agent
-        from .schemas import EmailIntentState
+        from apps.worker.intent.graph import intent_agent
+        from apps.worker.intent.schemas import EmailIntentState
 
         state = EmailIntentState(
             subject=payload_subject or email.subject or "",

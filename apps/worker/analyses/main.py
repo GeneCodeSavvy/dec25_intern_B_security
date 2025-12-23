@@ -15,22 +15,17 @@ from googleapiclient.discovery import build
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from pythonjsonlogger import json as jsonlogger
 
 from packages.shared.database import get_session, init_db
 from packages.shared.constants import EmailStatus
 from packages.shared.models import EmailEvent
 from packages.shared.queue import get_redis_client, EMAIL_ANALYSIS_QUEUE
 from packages.shared.types import AttachmentMetadata
+from packages.shared.logger import setup_logging
 
 
 # --- Logging ---
-logger = logging.getLogger()
-logHandler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(levelname)s %(message)s")
-logHandler.setFormatter(formatter)
-logger.addHandler(logHandler)
-logger.setLevel(logging.INFO)
+logger = setup_logging("analyses-worker")
 
 # --- Configuration ---
 HA_API_KEY = os.getenv("HYBRID_ANALYSIS_API_KEY")

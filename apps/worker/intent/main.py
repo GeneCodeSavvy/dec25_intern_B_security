@@ -9,13 +9,16 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from pythonjsonlogger import json as jsonlogger
 
 from packages.shared.database import get_session, init_db
 from packages.shared.constants import EmailStatus, RiskTier
 from packages.shared.models import EmailEvent
 from packages.shared.queue import get_redis_client, EMAIL_INTENT_QUEUE
+from packages.shared.logger import setup_logging
 from .taxonomy import Intent
+
+# Configure logging
+logger = setup_logging("intent-worker")
 
 
 def classify_risk(score: int) -> RiskTier:

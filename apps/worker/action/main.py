@@ -22,11 +22,13 @@ from typing import Optional, Set, Literal
 
 from fastapi import FastAPI, BackgroundTasks, status
 from pydantic import BaseModel
-from pythonjsonlogger import json as jsonlogger
 import google.auth
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..', '..'))
+from packages.shared.logger import setup_logging
 from gmail_labels import apply_labels, ensure_labels_exist, get_label_for_verdict
 from ai_fallback import analyze_urls, is_gemini_available
 
@@ -42,12 +44,7 @@ GMAIL_SEMAPHORE = asyncio.Semaphore(5)  # Gmail allows ~5-10 modify/sec
 GEMINI_SEMAPHORE = asyncio.Semaphore(2)  # Conservative for AI calls
 
 # --- Logging ---
-logger = logging.getLogger()
-logHandler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(levelname)s %(message)s")
-logHandler.setFormatter(formatter)
-logger.addHandler(logHandler)
-logger.setLevel(logging.INFO)
+logger = setup_logging("action-worker")
 
 # --- State: In-memory Idempotency ---
 # Tracks message_ids that have already been processed

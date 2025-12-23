@@ -1,5 +1,8 @@
+import logging
 import os
 from packages.shared.types import StructuredEmail
+
+logger = logging.getLogger(__name__)
 
 
 # --- Risk Gate Logic (Pure, Deterministic) ---
@@ -42,5 +45,10 @@ def evaluate_static_risk(payload: StructuredEmail) -> tuple[bool, str, int]:
     # Fail-safe
     if score > 50:
         should_sandbox = True
+    
+    logger.info(
+        'Risk evaluation: should_sandbox=%s, score=%d, reasons=%s',
+        should_sandbox, score, reason_str
+    )
 
     return should_sandbox, reason_str, score
